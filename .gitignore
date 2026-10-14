@@ -1,0 +1,28 @@
+node_modules/
+release/
+dist/
+.DS_Store
+*.log
+.env
+
+# Données privées et identifiants potentiellement exportés
+radar-data.json
+*.sqlite
+*.sqlite3
+*.db
+*.env
+.env.*
+secrets.json
+credentials.json
+*.pem
+*.key
+
+# Exports de candidatures et données réelles : NE JAMAIS publier
+*.eml
+CV-*.docx
+CV-*.pdf
+Lettre-*.docx
+Lettre-*.pdf
+local-data/
+user-data/
+exports/
