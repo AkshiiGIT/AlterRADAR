@@ -30,7 +30,7 @@ jobs:
       - name: Tests
         run: npm test
       - name: Générer les installateurs
-        run: npm run ${{ matrix.build }}
+        run: npm run ${{ matrix.build }} -- --publish never
       - name: Stocker les installateurs
         uses: actions/upload-artifact@v4
         with:
