@@ -9,7 +9,7 @@ where npm >nul 2>nul
 if errorlevel 1 goto :missing
 if not exist "node_modules\electron" (
   echo Premiere ouverture : installation des dependances...
-  call npm install
+  if exist "package-lock.json" (call npm ci) else (call npm install)
   if errorlevel 1 goto :error
 )
 call npm start

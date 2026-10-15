@@ -20,7 +20,7 @@ const {extractCandidateProfile,validatedProfile}=require('../lib/profile.cjs');
 const {suggestedJobs,analyzeMatch,careerFit}=require('../lib/matching.cjs');
 const {normalizeTypes,classifyJob,eligibleContract,contractLabel}=require('../lib/contracts.cjs');
 const OLLAMA_BASE = 'http://127.0.0.1:11434';
-const {recommendedDownload, parsePullUpdate, explainOllamaError} = require('../lib/ollama.cjs');
+const {recommendedDownload, parsePullUpdate, explainOllamaError, QWEN_CATALOG, allowedModel} = require('../lib/ollama.cjs');
 const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024;
 let mainWindow;
 let userFile;
@@ -36,10 +36,21 @@ let runtime = {scanning:false,lastError:'',lastTelegramError:''};
 function initialState() {
   return {
     schema: 2,
-    settings: { theme: 'dark', selectedModel: '', strictCareer:true, excludeUnknownEducation: false, autoStart:false, telegramChatId:'', telegramTokenEncrypted:'', telegramApprovalsEnabled:false, telegramOffset:0, monitoringEnabled:false, intervalMinutes:60, autoPrepare:false, smtpHost:'', smtpPort:587, smtpUser:'', smtpFrom:'', smtpPasswordEncrypted:'', deliveryMode:'draft', searchTypes:['alternance'], onlyAlternance:true, excludePrivateSchools:true, onboardingCompleted:false, sourceEnabled:[...DEFAULT_ENABLED], sourceCredentialsEncrypted:{}, maxNotificationsPerScan:12 },
+    settings: { theme: 'dark', selectedModel: '', strictCareer:true, excludeUnknownEducation: false, autoStart:false, telegramChatId:'', telegramTokenEncrypted:'', telegramApprovalsEnabled:false, telegramOffset:0, monitoringEnabled:false, intervalMinutes:60, autoPrepare:false, smtpHost:'', smtpPort:587, smtpUser:'', smtpFrom:'', smtpPasswordEncrypted:'', deliveryMode:'draft', searchTypes:['alternance'], onlyAlternance:true, excludePrivateSchools:true, onboardingCompleted:false, sourceEnabled:[...DEFAULT_ENABLED], sourceCredentialsEncrypted:{}, maxNotificationsPerScan:12, autoEducationLimit:true, appearanceStyle:'solid', wallpaperMode:'none', glassTint:'#9b8bff', glassIntensity:50, reduceEffects:false },
     rules: defaultRules().map(r=>({...r,enabled:false})), boards:[], monitoring: {lastScanAt:'',lastResult:null,sourceRuns:{},sourceResults:[]},
     profile: { name: '', email: '', education: '', level: '', roles: '', skills: '', location: '', rhythm: '', experience: '' },
     documents: { cv: null, letter: null }, jobs: [], outputs: {}
+  };
+}
+const HEX=/^#[0-9a-fA-F]{6}$/;
+function appearanceFromSaved(settings){
+  return {
+    appearanceStyle:['solid','glass','tinted'].includes(settings.appearanceStyle)?settings.appearanceStyle:'solid',
+    wallpaperMode:['none','gradient','image'].includes(settings.wallpaperMode)?settings.wallpaperMode:'none',
+    glassTint:HEX.test(String(settings.glassTint||''))?settings.glassTint:'#9b8bff',
+    glassIntensity:Number.isInteger(settings.glassIntensity)&&settings.glassIntensity>=0&&settings.glassIntensity<=100?settings.glassIntensity:50,
+    reduceEffects:settings.reduceEffects===true,
+    autoEducationLimit:settings.autoEducationLimit!==false
   };
 }
 function readState() {
@@ -49,7 +60,8 @@ function readState() {
     return {
       ...defaults,
       profile: { ...defaults.profile, ...(saved.profile || {}) },
-      settings: { ...defaults.settings, ...(saved.settings || {}),searchTypes:normalizeTypes(Array.isArray(saved.settings?.searchTypes)?saved.settings.searchTypes:(saved.settings?.onlyAlternance===false?['alternance','stage']:['alternance'])),sourceEnabled:migrateEnabledSources(saved.settings?.sourceEnabled??DEFAULT_ENABLED) },
+      settings: { ...defaults.settings, ...(saved.settings || {}),searchTypes:normalizeTypes(Array.isArray(saved.settings?.searchTypes)?saved.settings.searchTypes:(saved.settings?.onlyAlternance===false?['alternance','stage']:['alternance'])),sourceEnabled:migrateEnabledSources(saved.settings?.sourceEnabled??DEFAULT_ENABLED),
+        ...appearanceFromSaved(saved.settings||{}) },
       rules: Array.isArray(saved.rules) ? saved.rules.map(r => { try { return validateRule(r); } catch { return null; } }).filter(Boolean).slice(0,50) : defaults.rules,
       boards: Array.isArray(saved.boards)?saved.boards.filter(url=>{try{parseBoard(url);return true;}catch{return false;}}).slice(0,80):[],
       monitoring: {...defaults.monitoring,...(saved.monitoring||{})},
@@ -58,6 +70,19 @@ function readState() {
       outputs: saved.outputs && typeof saved.outputs === 'object' ? saved.outputs : {}
     };
   } catch { return initialState(); }
+}
+function imageKind(b){
+  if(b.length>=8 && b.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))return {ext:'png',mime:'image/png'};
+  if(b.length>=3 && b[0]===255 && b[1]===216 && b[2]===255)return {ext:'jpg',mime:'image/jpeg'};
+  if(b.length>=12 && b.toString('ascii',0,4)==='RIFF'&&b.toString('ascii',8,12)==='WEBP')return {ext:'webp',mime:'image/webp'};
+  return null;
+}
+function wallpaperData(){
+  for(const ext of ['png','jpg','webp']){
+    const file=path.join(app.getPath('userData'),'alterradar-wallpaper.'+ext);
+    try {const b=fs.readFileSync(file);const kind=imageKind(b);if(kind&&b.length<=8*1024*1024)return `data:${kind.mime};base64,${b.toString('base64')}`;}catch{}
+  }
+  return '';
 }
 function persist() {
   const content = JSON.stringify(state, null, 2);
@@ -79,7 +104,7 @@ function snapshot() {
   const {telegramTokenEncrypted,smtpPasswordEncrypted,telegramOffset,sourceCredentialsEncrypted,...safeSettings}=state.settings;
   return { ...state, settings:{...safeSettings,sourceCredentialStatus:Object.fromEntries(SOURCES.map(x=>[x.id,Boolean(sourceCredentialsEncrypted?.[x.id])])),telegramConfigured:!!telegramTokenEncrypted,smtpConfigured:!!smtpPasswordEncrypted},
     runtime:{...runtime},statuses:LABELS, ruleFields:RULE_FIELDS, creator,sources:SOURCES,atsCatalog:CATALOG,
-    roleSuggestions:suggestedJobs(p), jobs: state.jobs.map(j => { const detected=identifyAts(j.url);const atsId=j.atsId||detected.id;const atsName=j.atsName&&j.atsId?j.atsName:detected.name;const match=analyzeMatch(j,p);const score=match.score; const audit=evaluateJob({...j,score},p,state.rules,{excludeUnknownEducation:state.settings.excludeUnknownEducation});const contractOk=eligibleContract(j,state.settings.searchTypes);const career=careerFit(j,p,state.settings.strictCareer!==false);return {...j,atsId,atsName,contractTypes:classifyJob(j),score,matchExplanations:match.explanations, ...audit,eligible:audit.eligible&&contractOk&&career.eligible&&!(state.settings.excludePrivateSchools&&institutionListing(j)),reasons:[...audit.reasons,...(!career.eligible?[career.reason]:[]),...(!contractOk?['Contrat hors du périmètre recherché']:[]),...(state.settings.excludePrivateSchools&&institutionListing(j)?['Annonce publiée par un organisme de formation']:[])]}; }) }; 
+    roleSuggestions:suggestedJobs(p), jobs: state.jobs.map(j => { const detected=identifyAts(j.url);const atsId=j.atsId||detected.id;const atsName=j.atsName&&j.atsId?j.atsName:detected.name;const match=analyzeMatch(j,p);const score=match.score; const audit=evaluateJob({...j,score},p,state.rules,{excludeUnknownEducation:state.settings.excludeUnknownEducation,strictProfileEducation:state.settings.autoEducationLimit!==false});const contractOk=eligibleContract(j,state.settings.searchTypes);const career=careerFit(j,p,state.settings.strictCareer!==false);return {...j,atsId,atsName,contractTypes:classifyJob(j),score,matchExplanations:match.explanations, ...audit,eligible:audit.eligible&&contractOk&&career.eligible&&!(state.settings.excludePrivateSchools&&institutionListing(j)),reasons:[...audit.reasons,...(!career.eligible?[career.reason]:[]),...(!contractOk?['Contrat hors du périmètre recherché']:[]),...(state.settings.excludePrivateSchools&&institutionListing(j)?['Annonce publiée par un organisme de formation']:[])]}; }) };
 }
 async function ollamaRequest(endpoint, options = {}, ms = 8000) {
   let result;
@@ -95,9 +120,11 @@ async function ollamaRequest(endpoint, options = {}, ms = 8000) {
 }
 let modelPulling=false;
 async function installRecommendedModel() {
+  return installQwenModel(recommendedDownload(getSystemInfo().totalGb));
+}
+async function installQwenModel(model) {
   if(modelPulling)throw new Error('Un téléchargement de modèle est déjà en cours.');
-  const model=recommendedDownload(getSystemInfo().totalGb);
-  if(!model)throw new Error('Mémoire insuffisante pour proposer une IA locale (moins de 4 Go).');
+  if(!model || !allowedModel(model))throw new Error('Modèle Qwen non autorisé. Choisis un modèle dans le catalogue.');
   const available=await installedModels();
   if(!available.connected)throw new Error(available.error);
   if(available.models.some(m=>m.name===model)){
@@ -168,9 +195,9 @@ async function importFile(kind) {
   const bytes = fs.readFileSync(filepath);
   let extracted = '';
   if (ext === '.pdf') {
-    const pdfParse = require('pdf-parse');
-    const result = await pdfParse(bytes, { max: 12 });
-    extracted = result.text || '';
+    // pdf-parse v2 expose la classe PDFParse (la fonction v1 a été supprimée).
+    // Le parser libère le worker et la mémoire même en cas d'erreur.
+    extracted = await require('../lib/pdf-text.cjs').extractPdfText(bytes);
   } else if (ext === '.docx') {
     const mammoth = require('mammoth');
     extracted = (await mammoth.extractRawText({ buffer: bytes })).value;
@@ -215,6 +242,7 @@ async function importBoard(url, onlyAlternance, automated=false) {
     if (!item.title || !item.url) continue;
     if (!eligibleContract(item,state.settings.searchTypes)) continue;
     if(!careerFit(item,state.profile,state.settings.strictCareer!==false).eligible)continue;
+    if(!evaluateJob(item,state.profile,state.rules,{excludeUnknownEducation:state.settings.excludeUnknownEducation,strictProfileEducation:state.settings.autoEducationLimit!==false}).eligible)continue;
     kept++;
     let safe;
     try { safe = validateHttpsUrl(item.url); } catch { continue; }
@@ -545,7 +573,7 @@ async function pollTelegram(){
 }
 function visibleNewJobs() {
   return state.jobs.filter(j=>j.autoDiscoveredAt&&!j.notifiedAt&&!j.alertDismissedAt&&!(state.settings.excludePrivateSchools&&institutionListing(j))&&
-    eligibleContract(j,state.settings.searchTypes) && careerFit(j,state.profile,state.settings.strictCareer!==false).eligible && evaluateJob({...j,score:scoreJob(j,state.profile)},state.profile,state.rules,{excludeUnknownEducation:state.settings.excludeUnknownEducation}).eligible);
+    eligibleContract(j,state.settings.searchTypes) && careerFit(j,state.profile,state.settings.strictCareer!==false).eligible && evaluateJob({...j,score:scoreJob(j,state.profile)},state.profile,state.rules,{excludeUnknownEducation:state.settings.excludeUnknownEducation,strictProfileEducation:state.settings.autoEducationLimit!==false}).eligible);
 }
 async function scanOnce() {
   if(scanning) throw new Error('Une recherche est déjà en cours.');
@@ -573,7 +601,7 @@ async function scanOnce() {
     state.monitoring.atsResults=expanded.boards;
     const merged=mergeDiscovered(state.jobs,[...received.jobs,...expanded.jobs],{
       profile:state.profile,rules:state.rules,excludeUnknownEducation:state.settings.excludeUnknownEducation,
-      excludePrivateSchools:state.settings.excludePrivateSchools,strictCareer:state.settings.strictCareer!==false,searchTypes:state.settings.searchTypes
+      excludePrivateSchools:state.settings.excludePrivateSchools,strictCareer:state.settings.strictCareer!==false,strictProfileEducation:state.settings.autoEducationLimit!==false,searchTypes:state.settings.searchTypes
     });
     state.jobs=merged.jobs;imported=merged.stats.added;
     scanned=received.sources.filter(x=>x.status==='ok').length+expanded.boards.filter(x=>x.status==='ok').length;
@@ -648,6 +676,25 @@ function registerIpc() {
   ipcMain.handle('app:email-draft',(_e,id,saveAs)=>openEmailDraft(state.jobs.find(j=>j.id===id),!!saveAs));
   ipcMain.handle('app:email-copy',(_e,id)=>{const job=state.jobs.find(j=>j.id===id);approvedJob(job);const fields=applicationEmail(job,state.outputs[job.id],state.profile);clipboard.writeText(`À : ${fields.to}\nObjet : ${fields.subject}\n\n${fields.text}`);return true;});
   ipcMain.handle('app:system', () => getSystemInfo());
+  ipcMain.handle('app:wallpaper-import', async () => {
+    const picked=await dialog.showOpenDialog(mainWindow,{title:'Choisir un fond AlterRADAR',properties:['openFile'],filters:[{name:'Images',extensions:['png','jpg','jpeg','webp']} ]});
+    if(picked.canceled||!picked.filePaths?.length)return {cancelled:true};
+    const original=picked.filePaths[0];
+    const stat=fs.statSync(original);
+    if(!stat.isFile()||stat.size<=0||stat.size>8*1024*1024)throw new Error('Image invalide ou trop lourde (maximum 8 Mo).');
+    const data=fs.readFileSync(original);
+    const kind=imageKind(data);
+    if(!kind)throw new Error('Choisis une image PNG, JPG ou WebP valide.');
+    const file=path.join(app.getPath('userData'),'alterradar-wallpaper.'+kind.ext);
+    fs.writeFileSync(file,data,{mode:0o600});
+    for(const ext of ['png','jpg','webp'])if(ext!==kind.ext){try{fs.unlinkSync(path.join(app.getPath('userData'),'alterradar-wallpaper.'+ext));}catch{}}
+    state.settings.wallpaperMode='image';persist();return {cancelled:false,dataUrl:`data:${kind.mime};base64,${data.toString('base64')}`};
+  });
+  ipcMain.handle('app:wallpaper-get', () => wallpaperData());
+  ipcMain.handle('app:wallpaper-clear', () => {
+    for(const ext of ['png','jpg','webp'])try{fs.unlinkSync(path.join(app.getPath('userData'),'alterradar-wallpaper.'+ext));}catch{}
+    state.settings.wallpaperMode='none';persist();return snapshot();
+  });
   ipcMain.handle('app:rules-add',(_e,rule)=>{if(state.rules.length>=50)throw new Error('50 règles maximum.');state.rules.push(validateRule(rule));persist();return snapshot();});
   ipcMain.handle('app:rules-update',(_e,id,patch)=>{const ix=state.rules.findIndex(r=>r.id===id);if(ix<0)throw new Error('Règle inconnue.');state.rules[ix]=validateRule({...state.rules[ix],...patch,id});persist();return snapshot();});
   ipcMain.handle('app:rules-delete',(_e,id)=>{state.rules=state.rules.filter(r=>r.id!==id);persist();return snapshot();});
@@ -674,7 +721,7 @@ function registerIpc() {
 
   ipcMain.handle('app:telegram-save',(_e,data)=>{if(!data||typeof data!=='object')throw new Error('Configuration Telegram invalide.');const chat=String(data.chatId||'').trim();if(chat&&!/^-?[0-9]{5,20}$/.test(chat))throw new Error('Chat ID Telegram invalide.');state.settings.telegramChatId=chat;if(data.clearToken)state.settings.telegramTokenEncrypted='';if(data.token){const token=String(data.token).trim();if(!/^[0-9]{5,15}:[A-Za-z0-9_-]{20,}$/.test(token))throw new Error('Jeton Telegram incorrect.');state.settings.telegramTokenEncrypted=encodeSecret(token);state.settings.telegramChatId='';state.settings.telegramOffset=0;telegramPairing=null;}persist();return snapshot();});
   ipcMain.handle('app:telegram-begin-pairing',()=>beginTelegramPairing());
-  ipcMain.handle('app:telegram-test',()=>telegramSend('✅ AlterRADAR : la connexion Telegram fonctionne.')); 
+  ipcMain.handle('app:telegram-test',()=>telegramSend('✅ AlterRADAR : la connexion Telegram fonctionne.'));
   ipcMain.handle('app:telegram-review',(_e,id)=>sendReview(id));
   ipcMain.handle('app:telegram-poll',()=>pollTelegram());
   ipcMain.handle('app:job-recruiter',(_e,id,form)=>{const job=state.jobs.find(j=>j.id===id);if(!job)throw new Error('Offre introuvable.');if(!form||typeof form!=='object')throw new Error('Contact invalide.');job.recruiterName=clean(form.recruiterName,110);job.recruiterRole=clean(form.recruiterRole,110);job.recruiterLinkedin=linkedinProfileUrl(form.recruiterLinkedin);if(form.applicationEmail && !isValidEmail(String(form.applicationEmail)))throw new Error('Adresse de candidature invalide.');const newRecipient=clean(form.applicationEmail,250);if((job.applicationEmail||'')!==newRecipient && ['en_attente_validation','validée','à_envoyer','erreur_envoi'].includes(job.status)){job.reviewNonce='';job.reviewDigest='';job.approvedDigest='';job.approvedMode='';job.status='à_revoir';record(job,'Validation invalidée','Adresse de candidature modifiée, nouvelle approbation nécessaire.');}job.applicationEmail=newRecipient;record(job,'Coordonnées RH mises à jour','Informations saisies volontairement ; le logiciel ne collecte pas automatiquement de données LinkedIn.');persist();return snapshot();});
@@ -697,6 +744,8 @@ function registerIpc() {
   });
   ipcMain.handle('app:models', () => installedModels());
   ipcMain.handle('app:install-recommended-model', () => installRecommendedModel());
+  ipcMain.handle('app:qwen-catalog', () => QWEN_CATALOG);
+  ipcMain.handle('app:install-model', (_e,name) => installQwenModel(name));
   ipcMain.handle('app:open-url', (_e,url) => shell.openExternal(validateHttpsUrl(url)));
   ipcMain.handle('app:open-ollama', () => shell.openExternal('https://ollama.com/download'));
   ipcMain.handle('app:profile-build-fast',()=>{
@@ -757,7 +806,24 @@ function registerIpc() {
       state.settings.selectedModel = clean(patch.selectedModel, 200);
     }
     if(Object.hasOwn(patch||{},'searchTypes')){state.settings.searchTypes=normalizeTypes(patch.searchTypes);state.settings.onlyAlternance=state.settings.searchTypes.length===1&&state.settings.searchTypes[0]==='alternance';}
-    for(const key of ['excludeUnknownEducation','excludePrivateSchools','strictCareer','monitoringEnabled','autoPrepare','autoStart','telegramApprovalsEnabled']) if(Object.hasOwn(patch||{},key))state.settings[key]=patch[key]===true;
+    for(const key of ['excludeUnknownEducation','excludePrivateSchools','strictCareer','autoEducationLimit','reduceEffects','monitoringEnabled','autoPrepare','autoStart','telegramApprovalsEnabled']) if(Object.hasOwn(patch||{},key))state.settings[key]=patch[key]===true;
+    if(Object.hasOwn(patch||{},'appearanceStyle')){
+      if(!['solid','glass','tinted'].includes(patch.appearanceStyle))throw new Error('Style visuel invalide.');
+      state.settings.appearanceStyle=patch.appearanceStyle;
+    }
+    if(Object.hasOwn(patch||{},'wallpaperMode')){
+      if(!['none','gradient','image'].includes(patch.wallpaperMode))throw new Error('Mode de fond invalide.');
+      state.settings.wallpaperMode=patch.wallpaperMode;
+    }
+    if(Object.hasOwn(patch||{},'glassTint')){
+      if(!HEX.test(String(patch.glassTint)))throw new Error('Teinte invalide (format #RRGGBB).');
+      state.settings.glassTint=patch.glassTint;
+    }
+    if(Object.hasOwn(patch||{},'glassIntensity')){
+      const v=Number(patch.glassIntensity);
+      if(!Number.isInteger(v)||v<0||v>100)throw new Error('Intensité entre 0 et 100.');
+      state.settings.glassIntensity=v;
+    }
     if(Object.hasOwn(patch||{},'deliveryMode')){if(!['draft','auto'].includes(patch.deliveryMode))throw new Error('Mode d’envoi inconnu.');state.settings.deliveryMode=patch.deliveryMode;}
     if(Object.hasOwn(patch||{},'maxNotificationsPerScan')){const n=Number(patch.maxNotificationsPerScan);if(!Number.isInteger(n)||n<1||n>50)throw new Error('Entre 1 et 50 alertes par scan.');state.settings.maxNotificationsPerScan=n;}
     if(Object.hasOwn(patch||{},'intervalMinutes')){const n=Number(patch.intervalMinutes);if(!Number.isInteger(n)||n<15||n>1440)throw new Error('Intervalle entre 15 et 1440 minutes.');state.settings.intervalMinutes=n;}

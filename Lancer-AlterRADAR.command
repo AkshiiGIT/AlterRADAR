@@ -10,7 +10,7 @@ if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
 fi
 if [ ! -d node_modules/electron ]; then
   echo 'Première ouverture : installation des dépendances…'
-  npm install || { echo 'Installation impossible.'; read -r -p 'Entrée pour fermer…' _; exit 1; }
+  if [ -f package-lock.json ]; then npm ci; else npm install; fi || { echo 'Installation impossible.'; read -r -p 'Entrée pour fermer…' _; exit 1; }
 fi
 npm start
 RESULT=$?

@@ -1,8 +1,8 @@
 {
   "name": "alterradar-desktop",
   "productName": "AlterRADAR",
-  "version": "0.10.0",
-  "description": "AlterRADAR : recherche automatique de stages et alternances, métiers déduits du CV, IA locale et validation Telegram",
+  "version": "0.12.0",
+  "description": "AlterRADAR : recherche locale de stages et alternances, matching de CV, IA Ollama et validation Telegram",
   "private": true,
   "main": "electron/main.cjs",
   "author": "Akasche MAHINTAN",
@@ -11,21 +11,25 @@
     "start": "electron .",
     "dev": "electron .",
     "test": "node --test tests/*.test.cjs",
-    "dist:mac": "electron-builder --mac dmg zip --x64 --arm64",
-    "dist:win": "electron-builder --win nsis portable --x64 --arm64",
+    "dist:mac": "electron-builder --mac dmg zip --x64 --arm64 --publish never",
+    "dist:win": "electron-builder --win nsis portable --x64 --arm64 --publish never",
     "dist": "electron-builder",
-    "check:public": "node scripts/check-public.cjs"
+    "check:public": "node scripts/check-public.cjs",
+    "verify:release": "npm run test && npm run check:lock && npm run smoke:deps && npm run check:public",
+    "check:lock": "node scripts/verify-lock.cjs",
+    "audit:production": "npm audit --omit=dev --audit-level=high",
+    "smoke:deps": "node scripts/smoke-dependencies.cjs"
   },
   "dependencies": {
-    "docx": "^9.5.1",
-    "mammoth": "^1.9.1",
-    "pdf-parse": "^1.1.1",
-    "pdfkit": "^0.17.1",
-    "nodemailer": "^7.0.6"
+    "docx": "9.11.0",
+    "mammoth": "1.13.0",
+    "pdf-parse": "2.4.5",
+    "pdfkit": "0.20.2",
+    "nodemailer": "10.1.1"
   },
   "devDependencies": {
-    "electron": "^37.2.0",
-    "electron-builder": "^26.0.12"
+    "electron": "44.7.2",
+    "electron-builder": "26.15.3"
   },
   "build": {
     "appId": "fr.alterradar.desktop",
@@ -90,6 +94,13 @@
       "createStartMenuShortcut": true
     },
     "artifactName": "AlterRADAR-${version}-${os}-${arch}.${ext}",
-    "copyright": "Copyright © 2026 Akasche MAHINTAN"
+    "copyright": "Copyright © 2026 Akasche MAHINTAN",
+    "asarUnpack": [
+      "**/node_modules/@napi-rs/**",
+      "**/node_modules/pdf-parse/**/pdf.worker*.mjs"
+    ]
+  },
+  "engines": {
+    "node": ">=24 <25"
   }
 }

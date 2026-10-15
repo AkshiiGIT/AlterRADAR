@@ -24,13 +24,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Installer les dépendances
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
+      - name: Vérifier le verrouillage des dépendances
+        run: npm run check:lock
       - name: Tests
         run: npm test
+      - name: Tests des formats DOCX, PDF et e-mail
+        run: npm run smoke:deps
+      - name: Audit des dépendances de production
+        run: npm audit --omit=dev --audit-level=high
       - name: Générer les installateurs
-        run: npm run ${{ matrix.build }} -- --publish never
+        run: npm run ${{ matrix.build }}
       - name: Stocker les installateurs
         uses: actions/upload-artifact@v4
         with:

@@ -11,7 +11,7 @@ const nav = [
 const RULE_LABELS={education:'Niveau d’études maximum requis',location_include:'Ville / zone autorisée',location_exclude:'Ville / zone interdite',title_include:'Mots-clés dans le titre',text_include:'Mots-clés obligatoires',text_exclude:'Mots-clés interdits',company_exclude:'Entreprises interdites',min_score:'Score minimal',contract:'Alternance obligatoire',remote:'Télétravail obligatoire'};
 const STATUS = ['nouvelle','à examiner','cv_en_cours','lettre_en_cours','dossier_prêt','en_attente_validation','à_revoir','validée','à_envoyer','en_cours_envoi','postulée','en_attente_reponse','entretien','refusée','acceptée','erreur_envoi'];
 const statusName = key => ui.state?.statuses?.[key] || key;
-const ui = {page:'onboarding',state:null,system:null,models:{connected:false,models:[],error:''},jobId:'',search:'',filter:'toutes',docKind:'cv',detailKind:'letter',busy:false,dirty:false,toast:null,telegramPairing:null,modelProgress:null};
+const ui = {page:'onboarding',state:null,system:null,models:{connected:false,models:[],error:''},jobId:'',search:'',filter:'toutes',docKind:'cv',detailKind:'letter',busy:false,dirty:false,toast:null,telegramPairing:null,modelProgress:null,modelCatalog:[],wallpaperData:''};
 const appEl = document.getElementById('app');
 
 const icon = (name,cls='') => `<svg class="ico ${cls}" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
@@ -34,13 +34,24 @@ function drawToast() {
   el.innerHTML=ui.toast?`<div class="toast ${ui.toast.type}" role="status">${esc(ui.toast.message)}</div>`:'';
 }
 function getDocumentLabel(kind){return kind==='cv'?'CV':'Lettre de motivation'}
+function shownJobs(){
+  // Le compteur du menu et celui de la page utilisent exactement la même liste.
+  return (ui.state?.jobs||[]).filter(j=>j.eligible).filter(j=>{
+    const hay=`${j.title} ${j.company} ${j.location}`.toLowerCase();
+    if(ui.page==='jobs' && (!hay.includes(ui.search.toLowerCase()) ||
+      !(ui.filter==='toutes'||(ui.filter==='alternance'&&j.contractTypes?.includes('alternance'))||
+        (ui.filter==='stage'&&j.contractTypes?.includes('stage'))||(ui.filter==='fort'&&j.score>=60))))return false;
+    return true;
+  }).sort((a,b)=>b.score-a.score);
+}
 function sidebar(){
-  const {profile,jobs}=ui.state;
+  const {profile}=ui.state;
+  const compatible=shownJobs().length;
   return `<aside class="sidebar">
     <div class="brand"><span class="brand-mark">${icon('radar')}</span><span>Alter<span style="color:var(--accent)">RADAR</span></span></div>
     ${!ui.state.settings.onboardingCompleted?`<button class="nav-item ${ui.page==='onboarding'?'active':''}" data-nav="onboarding" title="Créer mon profil" aria-label="Créer mon profil" style="margin-bottom:9px">${icon('sparkles')}<span>Créer mon profil</span></button>`:''}
     <div class="nav-label">ESPACE DE TRAVAIL</div>
-    <div class="nav-group">${nav.slice(0,6).map(([id,title,glyph])=>`<button class="nav-item ${ui.page===id?'active':''}" data-nav="${id}" title="${esc(title)}" aria-label="${esc(title)}">${icon(glyph)}<span>${title}</span>${id==='jobs'&&jobs.length?`<span class="nav-count">${jobs.length}</span>`:''}</button>`).join('')}</div>
+    <div class="nav-group">${nav.slice(0,6).map(([id,title,glyph])=>`<button class="nav-item ${ui.page===id?'active':''}" data-nav="${id}" title="${esc(title)}" aria-label="${esc(title)}">${icon(glyph)}<span>${title}</span>${id==='jobs'?`<span class="nav-count" title="${compatible} offre(s) compatible(s) affichée(s)">${compatible}</span>`:''}</button>`).join('')}</div>
     <div class="nav-label" style="margin-top:29px">PRÉFÉRENCES</div>
     <div class="nav-group">${nav.slice(6).map(([id,title,glyph])=>`<button class="nav-item ${ui.page===id?'active':''}" data-nav="${id}" title="${esc(title)}" aria-label="${esc(title)}">${icon(glyph)}<span>${title}</span></button>`).join('')}</div>
     <div class="sidebar-bottom"><div class="creator-credit">Créé par <strong>Akasche MAHINTAN</strong></div><div class="privacy-pill">${icon('shield')}<div><strong>Données privées</strong><br>Local, sauf envois autorisés.</div></div>
@@ -91,16 +102,13 @@ function dashboard(){
 }
 function empty(glyph,title,caption,cta='') {return `<div class="empty">${icon(glyph,'l')}<strong>${esc(title)}</strong><p>${esc(caption)}</p>${cta}</div>`}
 function jobs(){
-  const filtered=ui.state.jobs.filter(j=>j.eligible).filter(j=> {
-    const hay=`${j.title} ${j.company} ${j.location}`.toLowerCase();
-    return hay.includes(ui.search.toLowerCase()) && (ui.filter==='toutes'||(ui.filter==='alternance'&&j.contractTypes?.includes('alternance'))||(ui.filter==='stage'&&j.contractTypes?.includes('stage'))||(ui.filter==='fort'&&j.score>=60));
-  }).sort((a,b)=>b.score-a.score);
+  const filtered=shownJobs();
   const selected=ui.state.jobs.find(j=>j.id===ui.jobId&&j.eligible);
-  return `${pageHeader('DÉCOUVRIR',`Offres de ${contractTitle(ui.state.settings)}`,'AlterRADAR filtre les métiers d’après ton CV et ton cursus. Aucune liste de métiers à saisir.',`<button class="btn primary" data-action="scan-now" ${ui.busy?'disabled':''}>${icon('refresh')} ${ui.busy?'Recherche en cours…':'Chercher maintenant'}</button>`)}
+  return `<section class="jobs-page">${pageHeader('DÉCOUVRIR',`Offres de ${contractTitle(ui.state.settings)}`,'AlterRADAR filtre les métiers d’après ton CV et ton cursus. Aucune liste de métiers à saisir.',`<button class="btn primary" data-action="scan-now" ${ui.busy?'disabled':''}>${icon('refresh')} ${ui.busy?'Recherche en cours…':'Chercher maintenant'}</button>`)}
     <div class="alert">${icon('sparkles')}<span><strong>Tri des métiers : ${ui.state.settings.strictCareer!==false?'correspondance stricte':'recherche élargie'}.</strong> ${ui.state.settings.strictCareer!==false?'Seuls les postes liés à ton profil sont affichés.':'Les métiers différents de ton profil peuvent aussi apparaître.'} <button type="button" class="link-button" data-nav="rules">Modifier dans Règles de tri</button><br><small>${esc((ui.state.roleSuggestions||[]).slice(0,6).join(' · '))}</small></span></div>
     <div class="job-toolbar"><div class="search-field">${icon('search')}<input id="job-search" placeholder="Rechercher un poste, une entreprise, une ville…" value="${esc(ui.search)}" /></div><select id="job-filter"><option value="toutes" ${ui.filter==='toutes'?'selected':''}>Toutes les offres</option><option value="alternance" ${ui.filter==='alternance'?'selected':''}>Alternances</option><option value="stage" ${ui.filter==='stage'?'selected':''}>Stages</option><option value="fort" ${ui.filter==='fort'?'selected':''}>Score ≥ 60 %</option></select></div>
-    <div class="two-cols"><div class="card"><div class="card-header"><h3>${filtered.length} offre(s) compatibles</h3><span class="tag">${ui.state.jobs.filter(j=>!j.eligible).length} exclue(s) par les règles</span></div>${filtered.length?`<div class="job-list">${filtered.map(jobRow).join('')}</div>`:empty('search','Aucune offre compatible pour le moment','AlterRADAR analyse les sources publiques automatiquement. Si aucune offre n’apparaît, regarde le diagnostic dans Surveillance ; des API peuvent être limitées ou nécessiter une clé gratuite.',`<button class="btn primary" data-nav="monitor">Voir les sources ${icon('arrow','s')}</button>`)}</div>
-    <div class="column-flow">${selected?jobDetail(selected):`<div class="card">${empty('briefcase','Sélectionne une offre','Consulte l’annonce officielle, les contacts publics éventuels et prépare un dossier.')}</div>`}</div></div>`;
+    <div class="two-cols"><div class="card"><div class="card-header"><h3>${filtered.length} offre(s) compatibles</h3><span class="tag">${ui.state.jobs.length} analysées · ${ui.state.jobs.filter(j=>!j.eligible).length} exclue(s)</span></div>${filtered.length?`<div class="job-list">${filtered.map(jobRow).join('')}</div>`:empty('search','Aucune offre compatible pour le moment','AlterRADAR analyse les sources publiques automatiquement. Si aucune offre n’apparaît, regarde le diagnostic dans Surveillance ; des API peuvent être limitées ou nécessiter une clé gratuite.',`<button class="btn primary" data-nav="monitor">Voir les sources ${icon('arrow','s')}</button>`)}</div>
+    <div class="column-flow">${selected?jobDetail(selected):`<div class="card">${empty('briefcase','Sélectionne une offre','Consulte l’annonce officielle, les contacts publics éventuels et prépare un dossier.')}</div>`}</div></div></section>`;
 }
 function jobDetail(job){
   const generated = ui.state.outputs[job.id] || {};
@@ -172,7 +180,7 @@ function rulesPage(){
     <div class="column-flow">${list.length?list.map(r=>`<form class="rule-row rule-edit-form" data-id="${esc(r.id)}"><div class="rule-top"><label class="hint-check"><input type="checkbox" name="enabled" ${r.enabled?'checked':''}/> Activer</label><button type="button" class="btn small ghost" data-action="rule-delete" data-id="${esc(r.id)}">Supprimer</button></div><div class="rule-form"><select name="field" aria-label="Type de règle">${opt(r.field,r.field)}</select><input name="value" value="${esc(r.value)}" placeholder="Ex. 3, Paris, Java…" maxlength="350"/><select name="mode" aria-label="Correspondance"><option value="any" ${r.mode==='any'?'selected':''}>Un des termes</option><option value="all" ${r.mode==='all'?'selected':''}>Tous les termes</option></select><button class="btn small" type="submit">Enregistrer</button></div></form>`).join(''):empty('filter','Aucune règle','Ajoute une règle : sans règle active, aucune annonce ne sera exclue.')}</div>
     <div class="rule"></div><h3>Nouvelle règle</h3><form id="new-rule-form" class="rule-form space-top"><select name="field" aria-label="Type de nouveau filtre">${opt('text_exclude')}</select><input name="value" placeholder="Ex. Java, Paris, 3…" maxlength="350"/><select name="mode"><option value="any">Un des termes</option><option value="all">Tous les termes</option></select><button class="btn primary small" type="submit">${icon('plus','s')} Ajouter</button></form>
     <p class="note space-top">Pour le niveau Bac+3 : choisis « Niveau d’études maximum requis » et saisis <strong>3</strong>. Les mentions explicites Bac+4, Bac+5, M1 et M2 seront exclues. Les annonces ambiguës demandent une vérification humaine.</p>
-  </section><section class="card space-top"><div class="card-header"><h3>Niveau non indiqué</h3>${icon('shield')}</div><p class="lead">Certains sites ne précisent pas le diplôme exigé. Tu décides de les afficher ou non.</p><form id="rules-options-form" class="rule-options space-top"><label class="hint-check"><input type="checkbox" name="strictCareer" ${ui.state.settings.strictCareer!==false?'checked':''}/> <strong>Masquer les métiers sans lien avec mon CV et ma formation</strong> (recommandé)</label><p class="note">Ex. un développeur web ne verra plus les postes d'assistant RH ou de commercial. Désactive cette option uniquement si tu veux explorer d'autres métiers.</p><label class="hint-check"><input type="checkbox" name="excludeUnknownEducation" ${ui.state.settings.excludeUnknownEducation?'checked':''}/> Exclure également les annonces sans niveau détectable</label><button class="btn small" type="submit">Sauvegarder</button></form></section>`;
+  </section><section class="card space-top"><div class="card-header"><h3>Niveau non indiqué</h3>${icon('shield')}</div><p class="lead">Certains sites ne précisent pas le diplôme exigé. Tu décides de les afficher ou non.</p><form id="rules-options-form" class="rule-options space-top"><label class="hint-check"><input type="checkbox" name="autoEducationLimit" ${ui.state.settings.autoEducationLimit!==false?'checked':''}/> <strong>Exclure automatiquement les offres exigeant un niveau supérieur au mien</strong> (recommandé)</label><p class="note">Si ton profil indique Bac+3, les offres explicitement réservées aux Bac+4 et Bac+5 sont exclues même si une ancienne règle manuelle est désactivée.</p><label class="hint-check"><input type="checkbox" name="strictCareer" ${ui.state.settings.strictCareer!==false?'checked':''}/> <strong>Masquer les métiers sans lien avec mon CV et ma formation</strong> (recommandé)</label><p class="note">Ex. un développeur web ne verra plus les postes d'assistant RH ou de commercial. Désactive cette option uniquement si tu veux explorer d'autres métiers.</p><label class="hint-check"><input type="checkbox" name="excludeUnknownEducation" ${ui.state.settings.excludeUnknownEducation?'checked':''}/> Exclure également les annonces sans niveau détectable</label><button class="btn small" type="submit">Sauvegarder</button></form></section>`;
 }
 function monitorPage(){
  const {settings,boards,monitoring}=ui.state;
@@ -219,10 +227,22 @@ function settings(){
     ${selected && !selectedValid && connected ? `<div class="alert error">${icon('info')} Le modèle précédemment choisi (${esc(selected)}) n’est plus installé. Sélectionne un modèle de la liste.</div>`:''}
     ${list.length?`<div class="model-list">${list.map(m=>`<div class="model-option ${selected===m.name?'active':''}"><div><strong>${esc(m.name)} ${m.name===reco?'<span class="tag good" style="margin-left:7px">Recommandé</span>':''}</strong><small>${gb(m.size)} sur le disque · ${esc(m.parameters||m.family||'Paramètres non indiqués')} ${m.quantization?`· ${esc(m.quantization)}`:''}</small></div>${selected===m.name?`<span class="tag good">${icon('check','s')} Actif</span>`:`<button data-action="choose-model" data-model="${esc(m.name)}">Utiliser</button>`}</div>`).join('')}</div>`:empty('cpu','Aucun modèle disponible',connected?'Télécharge un modèle avec Ollama puis actualise la liste.':'Démarre Ollama pour détecter les modèles installés.')}
     </section>
-    <div class="two-cols" style="margin-top:20px"><section class="card"><div class="card-header"><h3>Installer un nouveau modèle</h3>${icon('download')}</div><p class="lead" style="font-size:12px">Ollama est un moteur IA séparé. Il doit être installé et lancé sur ce PC ou Mac.</p><div class="step-list space-top"><div class="step"><span class="step-num">1</span><div><strong>Installer et lancer Ollama</strong><p>Disponible sur Windows et macOS. Pas de compte obligatoire.</p></div></div><div class="step"><span class="step-num">2</span><div><strong>Télécharger le modèle conseillé</strong><p>Utilise le bouton « Installer Qwen recommandé en 1 clic » ci-dessous. En cas de difficulté, commande de secours :</p><div class="codepill" style="margin-top:8px">${esc(reco?`ollama pull ${reco}`:'ollama pull qwen2.5:1.5b')}</div></div></div><div class="step"><span class="step-num">3</span><div><strong>Actualiser la liste</strong><p>Choisis ensuite le modèle téléchargé, ou n’importe quel modèle déjà installé.</p></div></div></div><div class="inline-actions space-top"><button class="btn primary" data-action="install-qwen" ${!reco||!connected||ui.busy?'disabled':''}>${icon('download','s')} ${list.some(m=>m.name===reco)?'Sélectionner Qwen recommandé':'Installer Qwen recommandé en 1 clic'}</button><button class="btn" data-action="get-ollama">Site Ollama ${icon('up-right','s')}</button><button class="btn" data-action="refresh-models">Actualiser ${icon('refresh','s')}</button></div>${ui.modelProgress?`<div class="note space-top">${esc(ui.modelProgress.status)} ${ui.modelProgress.percent===null?'':`· ${ui.modelProgress.percent}%`}</div><div class="pull-track"><div class="pull-bar" style="width:${ui.modelProgress.percent||0}%"></div></div>`:''}<p class="note space-top">Le téléchargement est gratuit mais nécessite Internet et plusieurs Go de disque. Il ne démarre qu'après ton clic. Une recommandation basée sur la RAM totale n'est pas une garantie de mémoire disponible au moment de la génération.</p></section>
-    <section class="card"><div class="card-header"><h3>Apparence & confidentialité</h3>${icon('shield')}</div><div class="field"><label>Thème de l’interface</label><select id="theme-selector"><option value="dark" ${ui.state.settings.theme==='dark'?'selected':''}>Sombre</option><option value="light" ${ui.state.settings.theme==='light'?'selected':''}>Clair</option><option value="system" ${ui.state.settings.theme==='system'?'selected':''}>Suivre le système</option></select></div><div class="rule"></div><div class="info-line">${icon('shield','s')} Documents enregistrés dans les données locales de l’app</div><div class="info-line">${icon('cpu','s')} Inférence envoyée uniquement à Ollama sur 127.0.0.1</div><div class="info-line">${icon('search','s')} Internet pour offres, Telegram et SMTP si activés</div><div class="info-line">${icon('check','s')} Aucun envoi de candidature sans validation</div><p class="note space-top">La détection de RAM est indicative. Un gros modèle peut manquer de mémoire, même si son téléchargement est possible. Les scores ne sont pas des probabilités de recrutement.</p></section></div>
+    <div class="two-cols" style="margin-top:20px"><section class="card"><div class="card-header"><h3>Installer un nouveau modèle</h3>${icon('download')}</div><p class="lead" style="font-size:12px">Ollama est un moteur IA séparé. Il doit être installé et lancé sur ce PC ou Mac.</p><div class="step-list space-top"><div class="step"><span class="step-num">1</span><div><strong>Installer et lancer Ollama</strong><p>Disponible sur Windows et macOS. Pas de compte obligatoire.</p></div></div><div class="step"><span class="step-num">2</span><div><strong>Télécharger le modèle conseillé</strong><p>Utilise le bouton « Installer Qwen recommandé en 1 clic » ci-dessous. En cas de difficulté, commande de secours :</p><div class="codepill" style="margin-top:8px">${esc(reco?`ollama pull ${reco}`:'ollama pull qwen2.5:1.5b')}</div></div></div><div class="step"><span class="step-num">3</span><div><strong>Actualiser la liste</strong><p>Choisis ensuite le modèle téléchargé, ou n’importe quel modèle déjà installé.</p></div></div></div><div class="inline-actions space-top"><button class="btn primary" data-action="install-qwen" ${!reco||!connected||ui.busy?'disabled':''}>${icon('download','s')} ${list.some(m=>m.name===reco)?'Sélectionner Qwen recommandé':'Installer Qwen recommandé en 1 clic'}</button><button class="btn" data-action="open-model-library">Voir les modèles Qwen ${icon('up-right','s')}</button><button class="btn" data-action="get-ollama">Site Ollama ${icon('up-right','s')}</button><button class="btn" data-action="refresh-models">Actualiser ${icon('refresh','s')}</button></div>${ui.modelProgress?`<div class="note space-top">${esc(ui.modelProgress.status)} ${ui.modelProgress.percent===null?'':`· ${ui.modelProgress.percent}%`}</div><div class="pull-track"><div class="pull-bar" style="width:${ui.modelProgress.percent||0}%"></div></div>`:''}<div class="model-market space-top"><h4>Bibliothèque Qwen · Installation locale</h4><p class="note">Sélectionne le modèle qui te convient. Les modèles nécessitant davantage de RAM restent disponibles, mais affichent un avertissement.</p><div class="model-market-grid">${ui.modelCatalog.map(model=>`<div class="model-market-item"><div><strong>${esc(model.label)}</strong><small>${esc(model.note)} · RAM conseillée : ${model.minRam} Go${Number(ui.system?.totalGb||0)<model.minRam?' · RAM probablement insuffisante':''}</small></div><button class="btn small" data-action="install-catalog-model" data-model="${esc(model.name)}" ${!connected||ui.busy?'disabled':''}>${list.some(x=>x.name===model.name)?'Choisir':'Installer'}</button></div>`).join('')}</div></div><p class="note space-top">Le téléchargement est gratuit mais nécessite Internet et plusieurs Go de disque. Il ne démarre qu'après ton clic. Une recommandation basée sur la RAM totale n'est pas une garantie de mémoire disponible au moment de la génération.</p></section>
+    <section class="card"><div class="card-header"><h3>Confidentialité</h3>${icon('shield')}</div><div class="info-line">${icon('shield','s')} Documents enregistrés dans les données locales de l’app</div><div class="info-line">${icon('cpu','s')} Inférence envoyée uniquement à Ollama sur 127.0.0.1</div><div class="info-line">${icon('search','s')} Internet pour offres, Telegram et SMTP si activés</div><div class="info-line">${icon('check','s')} Aucun envoi de candidature sans validation</div><p class="note space-top">La détection de RAM est indicative. Un gros modèle peut manquer de mémoire, même si son téléchargement est possible. Les scores ne sont pas des probabilités de recrutement.</p></section></div>
+    <section class="card space-top appearance-settings"><div class="card-header"><div><h2>Apparence personnalisée</h2><p class="subtitle">Un fond local, une interface sobre ou un verre dépoli teinté. Les réglages sont enregistrés sur ce PC.</p></div>${icon('sparkles')}</div>
+      <div class="appearance-grid">
+        <div class="field"><label for="theme-selector">Thème</label><select id="theme-selector"><option value="dark" ${ui.state.settings.theme==='dark'?'selected':''}>Sombre</option><option value="light" ${ui.state.settings.theme==='light'?'selected':''}>Clair</option><option value="system" ${ui.state.settings.theme==='system'?'selected':''}>Suivre le système</option></select></div>
+        <div class="field"><label for="appearance-style">Effet des panneaux</label><select id="appearance-style"><option value="solid" ${ui.state.settings.appearanceStyle==='solid'?'selected':''}>Classique · opaque</option><option value="glass" ${ui.state.settings.appearanceStyle==='glass'?'selected':''}>Liquid Glass · translucide</option><option value="tinted" ${ui.state.settings.appearanceStyle==='tinted'?'selected':''}>Liquid Glass · teinté</option></select></div>
+        <div class="field"><label for="wallpaper-mode">Fond de l'application</label><select id="wallpaper-mode"><option value="none" ${ui.state.settings.wallpaperMode==='none'?'selected':''}>Uni · discret</option><option value="gradient" ${ui.state.settings.wallpaperMode==='gradient'?'selected':''}>Dégradé artistique</option><option value="image" ${ui.state.settings.wallpaperMode==='image'?'selected':''}>Image personnelle ${ui.wallpaperData?'(chargée)':'(à importer)'}</option></select></div>
+        <div class="field"><label for="glass-tint">Teinte du verre</label><div class="color-control"><input id="glass-tint" type="color" value="${esc(ui.state.settings.glassTint||'#9b8bff')}" aria-label="Couleur de la teinte" /><span>Choisir une couleur</span></div></div>
+        <div class="field"><label for="glass-intensity">Intensité du verre · <span id="intensity-label">${Number(ui.state.settings.glassIntensity??50)} %</span></label><input id="glass-intensity" type="range" min="0" max="100" step="5" value="${Number(ui.state.settings.glassIntensity??50)}" /></div>
+        <div class="field"><label>Performances</label><label class="hint-check"><input id="reduce-effects" type="checkbox" ${ui.state.settings.reduceEffects?'checked':''}/> Réduire les effets visuels (moins de flou)</label></div>
+      </div>
+      <div class="inline-actions space-top"><button class="btn" data-action="wallpaper-pick">${icon('upload','s')} Importer une image (PNG/JPG/WebP)</button><button class="btn ghost" data-action="wallpaper-clear">${icon('refresh','s')} Retirer l'image</button></div>
+      <p class="note space-top">L'image est enregistrée dans les données locales d'AlterRADAR, jamais dans le dépôt Git ni sur un serveur. L'effet reste facultatif pour privilégier la lisibilité.</p>
+    </section>
     <section class="card space-top about-alterradar"><div class="card-header"><h3>À propos d’AlterRADAR</h3>${icon('info')}</div>
- <p class="lead"><strong>AlterRADAR</strong> · Version 0.10.0 · Application gratuite et open source pour Windows et macOS.</p>
+ <p class="lead"><strong>AlterRADAR</strong> · Version 0.12.0 · Application gratuite et open source pour Windows et macOS.</p>
  <p class="creator-about">Créé et développé par <strong>Akasche MAHINTAN</strong>.</p>
  <div class="about-points space-top"><div class="about-point"><strong>${icon('shield','s')} Tes données restent sur ton ordinateur par défaut.</strong><p>Ton profil, tes documents, tes règles de tri, tes candidatures et ton historique sont conservés localement. Les modèles Ollama génèrent tes documents sur ton propre PC. AlterRADAR ne possède pas de serveur central de comptes, de CV ou de télémétrie.</p></div>
  <div class="about-point"><strong>${icon('user','s')} Le créateur n’a pas accès à tes données personnelles.</strong><p>Akasche MAHINTAN ne reçoit pas les fichiers enregistrés sur ton appareil et ne peut pas consulter ton dossier depuis AlterRADAR. Attention : tes fichiers locaux ne sont pas chiffrés au repos ; protège ta session.</p></div>
@@ -231,9 +251,22 @@ function settings(){
  <div class="rule"></div><h3>Contacter le créateur</h3><div class="inline-actions space-top"><button class="btn" data-action="open-repository">${icon('up-right','s')} GitHub · akshiiGIT/AlterRADAR</button>${ui.state.creator?.linkedinUrl?`<button class="btn" data-action="open-creator-linkedin">${icon('up-right','s')} LinkedIn · Akasche MAHINTAN</button>`:`<span class="note">LinkedIn : lien du profil à compléter avant la publication.</span>`}<button class="btn" data-action="open-creator-email">${icon('send','s')} ${esc(ui.state.creator?.email||'Contacter le créateur')}</button></div>
  <p class="note space-top">© 2026 Akasche MAHINTAN · Licence MIT. Les messages Telegram ne sont pas des conversations secrètes chiffrées de bout en bout.</p></section>`;
 }
+function applyAppearance(){
+  const settings=ui.state?.settings||{};
+  document.body.dataset.appearance=settings.appearanceStyle||'solid';
+  document.body.dataset.wallpaper=settings.wallpaperMode||'none';
+  document.body.dataset.reduceEffects=settings.reduceEffects?'true':'false';
+  const hex=/^#[0-9a-f]{6}$/i.test(settings.glassTint||'')?settings.glassTint:'#9b8bff';
+  document.documentElement.style.setProperty('--ar-tint-rgb',[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)).join(', '));
+  document.documentElement.style.setProperty('--ar-glass-alpha',String(.04+Number(settings.glassIntensity??50)/100*.20));
+  document.documentElement.style.setProperty('--ar-glass-blur',settings.reduceEffects?'0px':`${Math.round(10+Number(settings.glassIntensity??50)*.25)}px`);
+  const safeData=typeof ui.wallpaperData==='string'&&/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(ui.wallpaperData)?ui.wallpaperData:'';
+  document.documentElement.style.setProperty('--ar-wallpaper',safeData?`url("${safeData}")`:'none');
+}
 function render(){
   if(!ui.state) return;
   document.body.dataset.theme=ui.state.settings.theme==='system' ? ((window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark') : ui.state.settings.theme;
+  applyAppearance();
   const views={onboarding,dashboard,jobs,documents,applications,rules:rulesPage,monitor:monitorPage,settings};
   // Keep the reader's position when an in-page action refreshes the view.
   // Navigation to another page starts from the top, as expected.
@@ -290,6 +323,24 @@ appEl.addEventListener('click',async(event)=>{
     render();return;
   }
   if(action==='choose-model'){await perform(()=>window.radar.saveSettings({selectedModel:node.dataset.model}),'Modèle sélectionné.');return;}
+  if(action==='install-catalog-model'){
+    if(!ui.models.connected){tip('Lance Ollama avant de télécharger un modèle.','error');return;}
+    ui.modelProgress={status:'Connexion à Ollama…',percent:0};
+    const installed=await perform(()=>window.radar.installModel(node.dataset.model),'Modèle téléchargé et sélectionné.');
+    ui.models=await window.radar.models();
+    if(installed)ui.modelProgress={status:installed.alreadyInstalled?'Modèle déjà installé, sélectionné':'Modèle installé avec succès',percent:100};
+    render();return;
+  }
+  if(action==='open-model-library'){await perform(()=>window.radar.openUrl('https://ollama.com/library/qwen2.5'));return;}
+  if(action==='wallpaper-pick'){
+    const picked=await perform(()=>window.radar.wallpaperImport(),'Fond personnalisé importé en local.');
+    if(picked?.dataUrl)ui.wallpaperData=picked.dataUrl;
+    render();return;
+  }
+  if(action==='wallpaper-clear'){
+    const cleared=await perform(()=>window.radar.wallpaperClear(),'Image de fond retirée.');
+    if(cleared)ui.wallpaperData='';render();return;
+  }
   if(action==='get-ollama'){await perform(()=>window.radar.openOllama());return;}
   if(action==='open-settings'){ui.page='settings';render();return;}
   if(action==='rule-delete'){await perform(()=>window.radar.deleteRule(id),'Règle supprimée.');return;}
@@ -323,10 +374,19 @@ appEl.addEventListener('change', async event=>{
   if(el.closest('form'))ui.dirty=true;
   if(el.id==='model-selector'){await perform(()=>window.radar.saveSettings({selectedModel:el.value}),'Modèle sélectionné.');}
   if(el.id==='theme-selector'){await perform(()=>window.radar.saveSettings({theme:el.value}));}
+  if(el.id==='appearance-style'){await perform(()=>window.radar.saveSettings({appearanceStyle:el.value}));}
+  if(el.id==='wallpaper-mode'){
+    if(el.value==='image'&&!ui.wallpaperData){tip('Importe une image pour activer le fond personnalisé.','error');render();}
+    else await perform(()=>window.radar.saveSettings({wallpaperMode:el.value}));
+  }
+  if(el.id==='glass-tint'){await perform(()=>window.radar.saveSettings({glassTint:el.value}));}
+  if(el.id==='glass-intensity'){await perform(()=>window.radar.saveSettings({glassIntensity:Number(el.value)}));}
+  if(el.id==='reduce-effects'){await perform(()=>window.radar.saveSettings({reduceEffects:el.checked}));}
   if(el.id==='job-filter'){ui.filter=el.value;render();}
   if(el.classList.contains('status-select')){await perform(()=>window.radar.setJobStatus(el.dataset.id,el.value),'Statut mis à jour.');}
 });
 appEl.addEventListener('input', event=>{
+  if(event.target.id==='glass-intensity'){document.getElementById('intensity-label').textContent=`${event.target.value} %`;return;}
   if(event.target.id==='job-search'){
     ui.search=event.target.value;
     const index=event.target.selectionStart;
@@ -349,7 +409,7 @@ appEl.addEventListener('submit',async event=>{
   if(form.id==='smtp-form'){await perform(()=>window.radar.smtpSave({...data,clearPassword:!!form.elements.clearPassword.checked}),'SMTP configuré.');return;}
   if(form.classList.contains('job-recruiter-form')){await perform(()=>window.radar.saveJobRecruiter(form.dataset.id,data),'Contact RH enregistré localement.');return;}
   if(form.classList.contains('job-email-form')){await perform(()=>window.radar.saveJobEmail(form.dataset.id,data.applicationEmail),'Adresse de candidature enregistrée.');return;}
-  if(form.id==='rules-options-form'){await perform(()=>window.radar.saveSettings({excludeUnknownEducation:!!form.elements.excludeUnknownEducation.checked,strictCareer:!!form.elements.strictCareer.checked}),'Traitement des niveaux inconnus modifié.');return;}
+  if(form.id==='rules-options-form'){await perform(()=>window.radar.saveSettings({excludeUnknownEducation:!!form.elements.excludeUnknownEducation.checked,strictCareer:!!form.elements.strictCareer.checked,autoEducationLimit:!!form.elements.autoEducationLimit.checked}),'Traitement des niveaux inconnus modifié.');return;}
   if(form.id==='profile-form'){
     const types=selectedContracts(form);if(!types.length){tip('Sélectionne Alternance, Stage ou les deux.','error');return;}
     const savedTypes=await perform(()=>window.radar.saveSettings({searchTypes:types}),'Types de recherche enregistrés.');
@@ -379,7 +439,8 @@ async function initialize(){
   try {
     if(!window.radar)throw new Error('Application desktop requise. Lance AlterRADAR depuis son application installée.');
     window.radar.onModelPull(info=>{ui.modelProgress=info; if(ui.page==='settings')render();});
-    const [state,system,models] = await Promise.all([window.radar.state(),window.radar.system(),window.radar.models()]);
+    const [state,system,models,modelCatalog,wallpaperData] = await Promise.all([window.radar.state(),window.radar.system(),window.radar.models(),window.radar.qwenCatalog?.()||Promise.resolve([]),window.radar.wallpaperGet?.()||Promise.resolve('')]);
+    ui.modelCatalog=modelCatalog;ui.wallpaperData=wallpaperData||'';
     ui.state=state;ui.system=system;ui.models=models;
     if(!state.settings.selectedModel&&models.models.length) {
       const suggested=models.models.find(m=>m.name===system.recommended);

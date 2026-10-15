@@ -1,6 +1,11 @@
-# AlterRADAR v0.10.0 — Mac et Windows
+# AlterRADAR v0.12.0 — Mac et Windows
 
-**Correctifs :** retour détaillé des erreurs Ollama 400, génération moins gourmande en RAM, téléchargement guidé d'un Qwen recommandé suivant la RAM (24 Go → Qwen2.5 7B quantifié), sélection libre des modèles déjà installés, choix Stage/Alternance, métier inféré du CV, lanceurs en double-clic Mac/Windows.
+> **Mise à jour v0.12.0** : voir [docs/MISE_A_JOUR_V0.12.md](docs/MISE_A_JOUR_V0.12.md) pour les correctifs, les commandes Fish de publication et les tests avant livraison. Les installateurs ne sont pas encore validés. **Conserve tes données locales ; ne remplace jamais ton dossier `.git`.**
+
+
+**Nouveautés v0.12.0 :** compteur des offres compatibles corrigé, exclusion Bac+N automatique déduite du profil, bibliothèque Qwen avec boutons d’installation, lien LinkedIn du créateur et fonds personnalisables avec verre teinté. Voir [CHANGELOG-v0.12.0.md](CHANGELOG-v0.12.0.md).
+
+**Correctifs précédents :** retour détaillé des erreurs Ollama 400, génération moins gourmande en RAM, téléchargement guidé d'un Qwen recommandé suivant la RAM (24 Go → Qwen2.5 7B quantifié), sélection libre des modèles déjà installés, choix Stage/Alternance, métier inféré du CV, lanceurs en double-clic Mac/Windows.
 
 **Sur Mac :** double-cliquer `Lancer-AlterRADAR.command` (Mac peut demander une autorisation de lancement de script téléchargé). Sur Windows : `Lancer-AlterRADAR.bat`. **Ces lanceurs nécessitent encore Node.js** et installent les dépendances au premier lancement seulement. Les futurs installateurs `.dmg` / `.exe` compilés depuis GitHub Actions ne nécessiteront pas Node.js chez l'utilisateur. Ollama est nécessaire pour l'IA locale.
 

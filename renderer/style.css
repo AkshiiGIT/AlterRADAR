@@ -189,3 +189,195 @@ html, body, #app { height: 100%; overflow: hidden; }
 .rule-options .hint-check{min-width:0;max-width:100%;white-space:normal;}
 .match-explanation{display:grid;gap:5px;margin-top:12px;}
 .match-explanation .note{display:flex;align-items:flex-start;gap:6px;}
+
+
+/* AlterRADAR v0.11 — spacing tokens et rythme visuel cohérent.
+   Ces règles sont scellées à la fin de la cascade pour éviter les anciens overrides.
+   La grille reste adaptative ; aucune largeur fixe n'impose un débordement. */
+:root {
+  --ar-space-xs: 8px;
+  --ar-space-sm: 12px;
+  --ar-space-md: 16px;
+  --ar-space-lg: 24px;
+  --ar-space-xl: 32px;
+  --ar-space-2xl: 40px;
+}
+.main-area { padding-bottom: 64px; }
+.topbar { margin-bottom: var(--ar-space-lg); }
+.page-title { margin-bottom: var(--ar-space-lg); gap: var(--ar-space-lg) !important; }
+.page-title .btn { flex-shrink: 0; }
+.sidebar .nav-group { gap: 8px; }
+.sidebar .nav-label { padding-bottom: 12px; }
+.sidebar .nav-group + .nav-label { margin-top: var(--ar-space-lg); }
+.sidebar-bottom { padding-top: var(--ar-space-xl); }
+.two-cols, .job-detail { gap: var(--ar-space-lg); align-items: start; }
+.card { padding: clamp(18px, 2.1vw, 28px); }
+.card-header { gap: var(--ar-space-md); margin-bottom: var(--ar-space-lg); }
+.job-detail > *, .two-cols > *, .job-toolbar > * { min-width: 0; }
+.job-toolbar { margin: 0 0 var(--ar-space-lg); gap: var(--ar-space-md); }
+.job-toolbar .search-field { min-width: min(100%, 280px); }
+.job-toolbar input, .job-toolbar select { min-height: 44px; }
+.job-list .job-row { padding-block: 18px; gap: 14px; }
+.job-list .job-row:first-child { padding-top: 10px; }
+.job-list .job-row:last-child { padding-bottom: 10px; }
+.job-name { line-height: 1.42; }
+.job-meta { line-height: 1.65; }
+.btn, .filter-tab, .icon-button { transition: border-color .18s ease, background-color .18s ease; }
+.form-grid { gap: var(--ar-space-lg); }
+.form-actions { gap: var(--ar-space-md); margin-top: var(--ar-space-lg); }
+.inline-actions, .doc-actions { row-gap: var(--ar-space-md); column-gap: var(--ar-space-md); }
+.column-flow { gap: var(--ar-space-lg); }
+.alert { line-height: 1.65; }
+/* Annonces : bandeau, champ et panneaux ne doivent jamais se toucher. */
+.jobs-page { display: flex; flex-direction: column; min-width: 0; }
+.jobs-page > .page-title { margin-bottom: var(--ar-space-lg); }
+.jobs-page > .alert { margin: 0 0 var(--ar-space-lg) !important; padding: 18px 20px; border-radius: 14px; }
+.jobs-page > .job-toolbar { margin: 0 0 var(--ar-space-lg) !important; }
+.jobs-page > .two-cols { margin-top: 0; }
+.jobs-page > .two-cols > .card,
+.jobs-page > .two-cols > .column-flow > .card { min-width: 0; }
+.jobs-page .card-header .tag { white-space: normal; text-align: center; }
+@media (max-width: 1180px) {
+  .two-cols, .job-detail { gap: 20px; }
+  .main-area { padding-inline: clamp(18px,2.4vw,26px); }
+}
+@media (max-width: 760px) {
+  .topbar { margin-bottom: 18px; }
+  .page-title { gap: var(--ar-space-md) !important; }
+  .page-title > .btn { width: 100%; }
+  .jobs-page > .alert { padding: 16px; margin-bottom: 20px !important; }
+  .jobs-page > .job-toolbar { margin-bottom: 20px !important; }
+  .job-toolbar .search-field { flex-basis: 100%; min-width: 0; }
+  .job-toolbar select { flex-basis: 100%; }
+  .card { padding: 18px; }
+  .job-list .job-row { padding-block: 16px; }
+}
+
+/* AlterRADAR 0.12 — surface personnalisée, lisibilité et glass facultatif */
+body { isolation:isolate; }
+body::before {
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  opacity:0; transition:opacity .3s ease;
+}
+body[data-wallpaper="gradient"]::before {
+  opacity:1;
+  background:radial-gradient(ellipse at 75% 16%, rgba(132,116,235,.23), transparent 45%),
+    radial-gradient(ellipse at 16% 90%, rgba(64,124,180,.20), transparent 47%);
+}
+body[data-wallpaper="image"]::before {
+  opacity:1;
+  background-image:linear-gradient(150deg,rgba(8,11,23,.55),rgba(10,13,28,.64)),var(--ar-wallpaper,none);
+  background-size:cover,cover; background-position:center,center;
+}
+body[data-theme="light"][data-wallpaper="image"]::before {
+  background-image:linear-gradient(150deg,rgba(245,246,253,.52),rgba(230,231,250,.59)),var(--ar-wallpaper,none);
+}
+body[data-theme="light"][data-wallpaper="gradient"]::before {
+  background:radial-gradient(ellipse at 75% 16%, rgba(157,143,244,.16), transparent 45%),
+    radial-gradient(ellipse at 16% 90%, rgba(92,160,208,.10), transparent 47%);
+}
+#app {position:relative; z-index:1;}
+body[data-appearance="glass"] .sidebar,
+body[data-appearance="tinted"] .sidebar,
+body[data-appearance="glass"] .card,
+body[data-appearance="tinted"] .card,
+body[data-appearance="glass"] .stat-card,
+body[data-appearance="tinted"] .stat-card,
+body[data-appearance="glass"] .doc-card,
+body[data-appearance="tinted"] .doc-card,
+body[data-appearance="glass"] .metric,
+body[data-appearance="tinted"] .metric,
+body[data-appearance="glass"] .source-item,
+body[data-appearance="tinted"] .source-item,
+body[data-appearance="glass"] .model-option,
+body[data-appearance="tinted"] .model-option {
+  background:rgba(20,25,40,.69);
+  backdrop-filter:blur(var(--ar-glass-blur,18px)) saturate(145%);
+  -webkit-backdrop-filter:blur(var(--ar-glass-blur,18px)) saturate(145%);
+  border-color:rgba(180,185,222,.22);
+  box-shadow:0 12px 45px rgba(0,0,0,.15),inset 0 1px rgba(255,255,255,.045);
+}
+body[data-theme="light"][data-appearance="glass"] .sidebar,
+body[data-theme="light"][data-appearance="tinted"] .sidebar,
+body[data-theme="light"][data-appearance="glass"] .card,
+body[data-theme="light"][data-appearance="tinted"] .card,
+body[data-theme="light"][data-appearance="glass"] .stat-card,
+body[data-theme="light"][data-appearance="tinted"] .stat-card,
+body[data-theme="light"][data-appearance="glass"] .doc-card,
+body[data-theme="light"][data-appearance="tinted"] .doc-card,
+body[data-theme="light"][data-appearance="glass"] .metric,
+body[data-theme="light"][data-appearance="tinted"] .metric,
+body[data-theme="light"][data-appearance="glass"] .source-item,
+body[data-theme="light"][data-appearance="tinted"] .source-item,
+body[data-theme="light"][data-appearance="glass"] .model-option,
+body[data-theme="light"][data-appearance="tinted"] .model-option {
+  background:rgba(255,255,255,.76);
+  border-color:rgba(255,255,255,.68);
+  box-shadow:0 10px 36px rgba(25,30,65,.09),inset 0 1px rgba(255,255,255,.6);
+}
+body[data-appearance="tinted"] .sidebar,
+body[data-appearance="tinted"] .card,
+body[data-appearance="tinted"] .stat-card,
+body[data-appearance="tinted"] .doc-card,
+body[data-appearance="tinted"] .metric,
+body[data-appearance="tinted"] .source-item,
+body[data-appearance="tinted"] .model-option {
+  background:linear-gradient(150deg,rgba(var(--ar-tint-rgb,155,139,255),var(--ar-glass-alpha,.14)),transparent 80%),rgba(20,25,40,.69);
+  border-color:rgba(var(--ar-tint-rgb,155,139,255),.3);
+}
+body[data-theme="light"][data-appearance="tinted"] .sidebar,
+body[data-theme="light"][data-appearance="tinted"] .card,
+body[data-theme="light"][data-appearance="tinted"] .stat-card,
+body[data-theme="light"][data-appearance="tinted"] .doc-card,
+body[data-theme="light"][data-appearance="tinted"] .metric,
+body[data-theme="light"][data-appearance="tinted"] .source-item,
+body[data-theme="light"][data-appearance="tinted"] .model-option {
+  background:linear-gradient(150deg,rgba(var(--ar-tint-rgb,155,139,255),var(--ar-glass-alpha,.14)),transparent 80%),rgba(255,255,255,.82);
+}
+body[data-appearance="glass"] .topbar,
+body[data-appearance="tinted"] .topbar {background:transparent;}
+body[data-reduce-effects="true"] *, body[data-reduce-effects="true"] *::before, body[data-reduce-effects="true"] *::after {
+  backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+  transition:none !important;animation:none !important;
+}
+/* Contrôles d'apparence : séparation et cibles tactiles accessibles. */
+.appearance-settings .card-header {margin-bottom:24px;}
+.appearance-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 28px;}
+.appearance-grid .field {min-width:0;}
+.appearance-grid select {min-height:44px;}
+.appearance-grid input[type="range"] {min-height:32px;padding-inline:0;accent-color:var(--accent);}
+.color-control {display:flex;align-items:center;gap:12px;min-height:44px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);padding:6px 12px;}
+.color-control input[type="color"] {width:46px;height:29px;padding:0;border:0;background:transparent;cursor:pointer;}
+.color-control span {font-size:12px;color:var(--soft);}
+.appearance-settings .inline-actions {margin-top:24px;}
+.model-market {border-top:1px solid var(--border);padding-top:20px;}
+.model-market h4 {font-size:13px;margin:0 0 10px;letter-spacing:-.02em;}
+.model-market-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px;}
+.model-market-item {display:flex;align-items:center;justify-content:space-between;gap:14px;min-width:0;border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--surface2);}
+.model-market-item>div {flex:1;min-width:0;}
+.model-market-item strong {font-size:12px;display:block;}
+.model-market-item small {color:var(--muted);font-size:11px;line-height:1.5;display:block;margin-top:6px;}
+.model-market-item .btn {flex-shrink:0;}
+.jobs-page .job-toolbar,.jobs-page>.alert {position:relative;}
+@media(max-width:1000px) {
+  .model-market-grid {grid-template-columns:1fr;}
+  .appearance-grid {gap:18px;}
+}
+@media(max-width:760px) {
+  .appearance-grid {grid-template-columns:1fr;}
+  .model-market-item {padding:12px;}
+}
+@media(prefers-reduced-motion:reduce) {
+  *, *::before, *::after {animation-duration:.01ms!important;transition-duration:.01ms!important;}
+}
+/* Le header fixe doit masquer le contenu qui défile sous lui. */
+body[data-appearance="glass"] .topbar,
+body[data-appearance="tinted"] .topbar {
+  background:rgba(12,16,29,.94);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+}
+body[data-theme="light"][data-appearance="glass"] .topbar,
+body[data-theme="light"][data-appearance="tinted"] .topbar {
+  background:rgba(246,247,252,.95);
+}

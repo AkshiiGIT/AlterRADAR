@@ -25,6 +25,11 @@ contextBridge.exposeInMainWorld('radar', Object.freeze({
   system: () => ipcRenderer.invoke('app:system'),
   models: () => ipcRenderer.invoke('app:models'),
   installRecommendedModel: () => ipcRenderer.invoke('app:install-recommended-model'),
+  qwenCatalog: () => ipcRenderer.invoke('app:qwen-catalog'),
+  installModel: name => ipcRenderer.invoke('app:install-model',name),
+  wallpaperImport: () => ipcRenderer.invoke('app:wallpaper-import'),
+  wallpaperGet: () => ipcRenderer.invoke('app:wallpaper-get'),
+  wallpaperClear: () => ipcRenderer.invoke('app:wallpaper-clear'),
   onModelPull: listener => {
     if(typeof listener !== 'function')return;
     ipcRenderer.on('ollama:pull-progress',(_event,info)=>listener(info));

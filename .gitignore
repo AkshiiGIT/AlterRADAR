@@ -26,3 +26,8 @@ Lettre-*.pdf
 local-data/
 user-data/
 exports/
+
+# Fichiers temporaires générés par les tests
+preview-*.png
+playwright-report/
+test-results/
