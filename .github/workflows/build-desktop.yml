@@ -18,13 +18,23 @@ jobs:
             build: dist:mac
             artifact: AlterRADAR-macOS
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     env:
+      # Pas de certificat : macOS reçoit une signature « ad hoc » (mac.identity = "-"),
+      # Windows reste non signé. Voir docs/PUBLICATION_GITHUB.md.
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
+          package-manager-cache: false
+      - name: Vérifier le runtime Node 24
+        shell: bash
+        run: |
+          node --version
+          npm --version
+          node -e "if (Number(process.versions.node.split('.')[0]) !== 24) process.exit(1)"
       - name: Installer les dépendances
         run: npm ci --no-audit --no-fund
       - name: Vérifier le verrouillage des dépendances
@@ -37,11 +47,53 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - name: Générer les installateurs
         run: npm run ${{ matrix.build }}
+
+      # Lance chaque application construite en mode --self-test : génération DOCX/PDF,
+      # lecture PDF, brouillon e-mail, icône et affichage de l'interface (données temporaires).
+      - name: Autotest de l'application Windows (x64)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $report = Join-Path $PWD 'selftest-windows-x64.json'
+          $exe = Join-Path $PWD 'release\win-unpacked\AlterRADAR.exe'
+          if (-not (Test-Path $exe)) { Write-Error "Application introuvable : $exe"; exit 1 }
+          $p = Start-Process -FilePath $exe -ArgumentList "--self-test=$report" -Wait -PassThru
+          if (Test-Path $report) { Get-Content $report } else { Write-Error 'Aucun rapport produit' }
+          if ($p.ExitCode -ne 0) { Write-Error "Autotest Windows en échec (code $($p.ExitCode))"; exit 1 }
+      - name: Autotest des applications macOS (arm64 et x64)
+        if: runner.os == 'macOS'
+        shell: bash
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          found=0
+          while IFS= read -r app; do
+            found=1
+            bin="$app/Contents/MacOS/AlterRADAR"
+            archs="$(lipo -archs "$bin")"
+            report="$PWD/selftest-macos-$(echo "$archs" | tr ' ' '-').json"
+            codesign --verify --deep --strict "$app"
+            if [[ "$archs" == *x86_64* && "$(uname -m)" == arm64 ]] && ! arch -x86_64 /usr/bin/true 2>/dev/null; then
+              echo "Rosetta indisponible : autotest x64 ignoré pour $app"; continue
+            fi
+            echo "Autotest $app ($archs)"
+            if ! "$bin" --self-test="$report" < /dev/null; then
+              cat "$report" 2>/dev/null || echo "Aucun rapport produit"
+              exit 1
+            fi
+            cat "$report"
+          done < <(find release -maxdepth 2 -name 'AlterRADAR.app' -type d)
+          test "$found" = 1
+
       - name: Stocker les installateurs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact }}
-          path: release/*
+          path: |
+            release/*.exe
+            release/*.dmg
+            release/*.zip
           if-no-files-found: error
           retention-days: 30
 
@@ -53,7 +105,7 @@ jobs:
       contents: write
     steps:
       - name: Récupérer les installateurs Windows et Mac
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: AlterRADAR-*
           path: release
@@ -61,17 +113,18 @@ jobs:
       - name: Contrôler les fichiers récupérés
         run: |
           find release -maxdepth 1 -type f -print
-          test -n "$(find release -maxdepth 1 -type f -name '*.exe' -print -quit)"
+          test -n "$(find release -maxdepth 1 -type f -name '*-Setup.exe' -print -quit)"
+          test -n "$(find release -maxdepth 1 -type f -name '*-Portable.exe' -print -quit)"
           test -n "$(find release -maxdepth 1 -type f -name '*.dmg' -print -quit)"
       - name: Calculer SHA-256
         run: |
           cd release
           sha256sum * > SHA256SUMS.txt
       - name: Publier la release du dépôt public
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: release/*
           generate_release_notes: true
           draft: true
-          # Publication MANUELLE après tests réels et signatures : une release brouillon
+          # Publication MANUELLE après tests réels : une release brouillon
           # évite de diffuser automatiquement des builds non vérifiés.

@@ -1,0 +1,6 @@
+name = "alterradar-alternance"
+main = "worker.mjs"
+compatibility_date = "2026-10-01"
+workers_dev = true
+# Add LBA_API_KEY with: npx wrangler secret put LBA_API_KEY
+# NEVER place the secret directly in this file or in the Electron app.

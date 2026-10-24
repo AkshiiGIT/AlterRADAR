@@ -1,0 +1,29 @@
+name: Tests Windows et macOS
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Installer les dépendances
+        run: npm ci --no-audit --no-fund
+      - name: Vérifier le verrouillage des dépendances
+        run: npm run check:lock
+      - name: Tests unitaires
+        run: npm test
+      - name: Tests des formats DOCX, PDF et e-mail
+        run: npm run smoke:deps

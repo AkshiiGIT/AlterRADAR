@@ -10,7 +10,7 @@ with sync_playwright() as pw:
     page.set_content(ns['html'])
     page.evaluate(ns['mock'])
     page.evaluate('window.radar.onModelPull=()=>{}')
-    page.add_script_tag(content=(root/'renderer/app.js').read_text())
+    page.add_script_tag(content=(root/'renderer/job-sort.js').read_text());page.add_script_tag(content=(root/'renderer/app.js').read_text())
     page.wait_for_selector('.app-shell')
     for width,height in [(1440,900),(1280,800),(1024,768),(760,680)]:
         page.set_viewport_size({'width':width,'height':height})

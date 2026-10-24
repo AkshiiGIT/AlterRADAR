@@ -1,0 +1,17 @@
+# Fins de ligne identiques sur Windows et macOS.
+# Sans ce fichier, un clone Windows (core.autocrlf=true) convertit en CRLF :
+# le lanceur macOS .command casse (« bad interpreter ») et les tests qui
+# relisent les sources peuvent échouer sur les runners Windows.
+* text=auto eol=lf
+
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+*.command text eol=lf
+*.sh      text eol=lf
+
+*.png  binary
+*.jpg  binary
+*.ico  binary
+*.icns binary
+*.pdf  binary
+*.docx binary

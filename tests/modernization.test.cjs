@@ -39,7 +39,7 @@ test('les imports restent compatibles avec le modèle de données v0.10',()=>{
 });
 
 test('la base est modernisée et n’utilise pas de versions preview',()=>{
- assert.equal(pkg.version,'0.12.0');
+ assert.equal(pkg.version,'0.14.0');
  assert.equal(pkg.devDependencies.electron,'44.7.2');
  assert.equal(pkg.devDependencies['electron-builder'],'26.15.3');
  assert.equal(pkg.dependencies['pdf-parse'],'2.4.5');
@@ -50,6 +50,8 @@ test('la base est modernisée et n’utilise pas de versions preview',()=>{
 test('pipeline : Node 24, npm ci, audit et désactivation de publication builder',()=>{
  const wf=fs.readFileSync(path.join(root,'.github/workflows/build-desktop.yml'),'utf8');
  assert.match(wf,/node-version: '24'/);
+ for(const action of ['actions/checkout@v7','actions/setup-node@v7','actions/upload-artifact@v7','actions/download-artifact@v7','softprops/action-gh-release@v3'])assert.ok(wf.includes(action),`Action trop ancienne : ${action}`);
+ assert.doesNotMatch(wf,/(?:actions\/(?:checkout|setup-node|upload-artifact|download-artifact)@v4|softprops\/action-gh-release@v2)/);
  assert.match(wf,/npm ci --no-audit --no-fund/);
  assert.match(wf,/npm audit --omit=dev --audit-level=high/);
  assert.match(wf,/npm run check:lock/);

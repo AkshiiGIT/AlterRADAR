@@ -31,7 +31,7 @@ with sync_playwright() as pw:
     scanNow:async()=>{window.__calls.scan++;return {imported:0,notified:0,errors:[]};}
    };
   }''',state)
- page.add_script_tag(content=(root/'renderer/app.js').read_text())
+ page.add_script_tag(content=(root/'renderer/job-sort.js').read_text());page.add_script_tag(content=(root/'renderer/app.js').read_text())
  page.locator('[data-action="import-document"][data-kind="cv"]').first.click()
  page.wait_for_function('window.__calls.fast===1')
  page.wait_for_function('document.querySelector(\'[name="level"]\')?.value === "3"')

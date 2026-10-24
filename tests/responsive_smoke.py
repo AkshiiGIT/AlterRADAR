@@ -16,7 +16,7 @@ with sync_playwright() as pw:
   page.set_content(html)
   page.evaluate(mock)
   page.evaluate('window.radar.onModelPull=()=>{}')
-  page.add_script_tag(content=(root/'renderer/app.js').read_text())
+  page.add_script_tag(content=(root/'renderer/job-sort.js').read_text());page.add_script_tag(content=(root/'renderer/app.js').read_text())
   page.wait_for_selector('.app-shell',timeout=10000)
   failures=[]
   for width,height in widths:

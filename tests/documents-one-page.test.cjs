@@ -43,8 +43,11 @@ test('Lettre: en-tête, destinataire, objet, paragraphes et une page estimée',(
   assert.ok(p.preset.font>=9);
 });
 test('Document démesuré: ne coupe pas silencieusement et refuse export multipage',()=>{
-  assert.throws(()=>layoutPlan('Profil\n'+('Développement frontend, backend, réseau et intégration. '.repeat(1250)), 'cv',profile,job),/trop long pour une seule page/i);
-  assert.throws(()=>layoutPlan(('Une phrase de motivation très longue. '.repeat(1800)), 'letter',profile,job),/trop long pour une seule page/i);
+  assert.throws(()=>layoutPlan('Profil\n'+('Développement frontend, backend, réseau et intégration. '.repeat(700)), 'cv',profile,job),/trop long pour une seule page/i);
+  assert.throws(()=>layoutPlan(('Une phrase de motivation très longue. '.repeat(900)), 'letter',profile,job),/trop long pour une seule page/i);
+});
+test('Une seule page est explicitement garantie dans le plan du CV',()=>{
+  assert.equal(layoutPlan(cv,'cv',profile,job).estimatedPages,1);
 });
 test('Aucun bloc ne prétend ajouter un diplôme ou poste absent',()=>{
   assert.equal(cvBlocks('Profil\nJe maîtrise React.',profile).some(x=>/doctorat|master en informatique/i.test(x.text)),false);

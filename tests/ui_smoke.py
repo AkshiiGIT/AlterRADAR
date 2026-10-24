@@ -31,7 +31,7 @@ with sync_playwright() as pw:
     page.on('pageerror',lambda e:errors.append(str(e)))
     page.set_content(html)
     page.evaluate(mock)
-    page.add_script_tag(content=(root/'renderer/app.js').read_text())
+    page.add_script_tag(content=(root/'renderer/job-sort.js').read_text());page.add_script_tag(content=(root/'renderer/app.js').read_text())
     page.locator('[data-nav="applications"]').first.click()
     assert page.locator('text=Tous mes dossiers').count()==1
     page.locator('[data-action="application-detail"]').first.click()

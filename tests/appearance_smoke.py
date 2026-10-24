@@ -19,7 +19,7 @@ with sync_playwright() as pw:
  browser=pw.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox','--disable-gpu'])
  page=browser.new_page(viewport={'width':1440,'height':900},device_scale_factor=1)
  errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
- page.set_content(html);page.evaluate(mock);page.evaluate('window.radar.onModelPull=()=>{}');page.add_script_tag(content=(root/'renderer/app.js').read_text());page.wait_for_selector('.app-shell',timeout=10000)
+ page.set_content(html);page.evaluate(mock);page.evaluate('window.radar.onModelPull=()=>{}');page.add_script_tag(content=(root/'renderer/job-sort.js').read_text());page.add_script_tag(content=(root/'renderer/app.js').read_text());page.wait_for_selector('.app-shell',timeout=10000)
  page.evaluate("ui.state.jobs=Array.from({length:34},(_,i)=>({id:String(i),title:'Alternance Développeur Web',company:'Exemple',location:'Paris',eligible:i<6,score:80,contractTypes:['alternance'],status:'nouvelle'}));ui.page='jobs';render()")
  assert page.locator('.nav-count').inner_text()=='6',page.locator('.nav-count').inner_text()
  assert '34 analysées' in page.locator('.jobs-page .card-header').first.inner_text()

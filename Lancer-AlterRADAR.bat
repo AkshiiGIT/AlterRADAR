@@ -7,7 +7,7 @@ where node >nul 2>nul
 if errorlevel 1 goto :missing
 where npm >nul 2>nul
 if errorlevel 1 goto :missing
-if not exist "node_modules\electron" (
+if not exist "node_modules\electron\path.txt" (
   echo Premiere ouverture : installation des dependances...
   if exist "package-lock.json" (call npm ci) else (call npm install)
   if errorlevel 1 goto :error

@@ -1,4 +1,4 @@
-# Détection des systèmes de recrutement (ATS) — AlterRADAR 0.6.1
+# Détection des systèmes de recrutement (ATS)
 
 **Cette version identifie 30 familles d'ATS à partir du domaine d'une URL de candidature.**
 Une identification n'est **pas** un connecteur de recherche et ne signifie jamais qu'une candidature est déposée. Les URL hébergées sur des domaines personnalisés ne révèlent pas toujours leur logiciel de recrutement ; le résultat peut donc rester « ATS non identifié ».

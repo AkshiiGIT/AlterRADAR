@@ -1,12 +1,20 @@
 {
   "name": "alterradar-desktop",
   "productName": "AlterRADAR",
-  "version": "0.12.0",
+  "version": "0.14.0",
   "description": "AlterRADAR : recherche locale de stages et alternances, matching de CV, IA Ollama et validation Telegram",
   "private": true,
   "main": "electron/main.cjs",
   "author": "Akasche MAHINTAN",
   "license": "MIT",
+  "homepage": "https://github.com/AkshiiGIT/AlterRADAR",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AkshiiGIT/AlterRADAR.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AkshiiGIT/AlterRADAR/issues"
+  },
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
@@ -18,7 +26,10 @@
     "verify:release": "npm run test && npm run check:lock && npm run smoke:deps && npm run check:public",
     "check:lock": "node scripts/verify-lock.cjs",
     "audit:production": "npm audit --omit=dev --audit-level=high",
-    "smoke:deps": "node scripts/smoke-dependencies.cjs"
+    "smoke:deps": "node scripts/smoke-dependencies.cjs",
+    "diagnose:sources": "node scripts/diagnose-sources.cjs",
+    "diagnose:dates": "node scripts/diagnose-dates.cjs",
+    "self-test": "electron . --self-test"
   },
   "dependencies": {
     "docx": "9.11.0",
@@ -64,9 +75,11 @@
         }
       ],
       "category": "public.app-category.productivity",
-      "hardenedRuntime": true,
+      "hardenedRuntime": false,
       "gatekeeperAssess": false,
-      "icon": "assets/icon.icns"
+      "icon": "assets/icon.icns",
+      "identity": "-",
+      "artifactName": "AlterRADAR-${version}-macOS-${arch}.${ext}"
     },
     "win": {
       "target": [
@@ -91,7 +104,13 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "artifactName": "AlterRADAR-${version}-Windows-${arch}-Setup.${ext}",
+      "buildUniversalInstaller": false
+    },
+    "portable": {
+      "artifactName": "AlterRADAR-${version}-Windows-${arch}-Portable.${ext}",
+      "buildUniversalInstaller": false
     },
     "artifactName": "AlterRADAR-${version}-${os}-${arch}.${ext}",
     "copyright": "Copyright © 2026 Akasche MAHINTAN",

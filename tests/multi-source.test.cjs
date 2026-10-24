@@ -74,7 +74,7 @@ test('first use scans without employer links or credentials',()=>{
   const app=require('node:fs').readFileSync(require('node:path').join(__dirname,'../renderer/app.js'),'utf8');
   assert.match(app,/app:profile-form|form.id==='profile-form'/);
   assert.match(app,/fromOnboarding[\s\S]*window.radar.scanNow\(\)/);
-  assert.match(app,/if\(imported && ui.state.documents.cv\?\.text/);
+  assert.match(app,/if\(imported && kind==='cv' && ui.state.documents.cv\?\.text/);
   assert.match(app,/window.radar.buildProfileFast\(\)/);
   assert.ok(DEFAULT_ENABLED.includes('alternancestech'));
 });

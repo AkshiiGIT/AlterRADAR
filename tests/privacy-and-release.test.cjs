@@ -12,7 +12,7 @@ test('À propos contient crédits, gratuité et confidentialité contextualisée
   assert.match(app,/Tes données restent sur ton ordinateur par défaut/);
   assert.match(app,/transmis aux serveurs Telegram/);
   assert.match(app,/Gratuit à télécharger et à utiliser/);
-  assert.match(app,/akshiiGIT/);
+  assert.match(app,/akshiiGIT/i);
 });
 test('Appairage Telegram individuel, privé, temporaire et authentifié',()=>{
   assert.match(main,/createPairingChallenge/);

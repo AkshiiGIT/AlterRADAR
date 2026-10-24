@@ -8,7 +8,7 @@ if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
   read -r -p 'Appuie sur Entrée pour fermer…' _
   exit 1
 fi
-if [ ! -d node_modules/electron ]; then
+if [ ! -f node_modules/electron/path.txt ]; then
   echo 'Première ouverture : installation des dépendances…'
   if [ -f package-lock.json ]; then npm ci; else npm install; fi || { echo 'Installation impossible.'; read -r -p 'Entrée pour fermer…' _; exit 1; }
 fi

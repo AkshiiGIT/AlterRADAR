@@ -1,0 +1,258 @@
+/* AlterRADAR 0.14 — Liquid UI design system. No network, CDN, font download or native Apple APIs.
+   Apple-inspired, independently drawn; macOS' proprietary Liquid Glass is not reproduced. */
+:root {
+  --ar-radius-xs:10px; --ar-radius-s:14px; --ar-radius-m:19px; --ar-radius-l:24px;
+  --ar-ease:cubic-bezier(.2,.8,.2,1); --ar-ease-spring:cubic-bezier(.17,1.05,.32,1);
+  --ar-highlight:rgba(255,255,255,.85);--ar-hairline:rgba(15,15,17,.09);
+}
+body[data-theme="light"] {
+  --bg:#f3f3f2;--sidebar:#fafaf9;--surface:#fff;--surface2:#f6f6f5;--surface3:#ebebea;
+  --border:#e4e4e2;--text:#151617;--muted:#686c71;--soft:#4b4f56;
+  --accent:#191a1c;--accentStrong:#111214;--tint:#ececeb;
+  --ar-ink:rgba(0,0,0,.055);--ar-hairline:rgba(14,16,20,.10);
+  --panelShadow:0 9px 34px rgba(18,18,20,.035),0 2px 8px rgba(18,18,20,.025);
+}
+body[data-theme="dark"] {
+  --bg:#08090c;--sidebar:#0b0c10;--surface:#15151b;--surface2:#202027;--surface3:#292730;
+  --border:#33313c;--text:#f2eff5;--muted:#a7a1af;--soft:#d0cbd8;
+  --accent:#c7a4ea;--accentStrong:#ae7bdc;--tint:rgba(123,76,159,.19);
+  --ar-highlight:rgba(255,255,255,.09);--ar-ink:rgba(0,0,0,.34);--ar-hairline:rgba(220,205,240,.12);
+  --panelShadow:0 12px 34px rgba(0,0,0,.20),0 1px 3px rgba(0,0,0,.17);
+}
+body[data-apple-glass="true"] {
+  --bg:#f2f3f4;--sidebar:#f9f9fa;--surface:#fff;--surface2:#f6f7f8;--surface3:#e9eaec;
+  --border:#dedfe2;--text:#16171b;--accent:#202126;--accentStrong:#17181b;--tint:#ededf0;
+}
+html {scroll-behavior:smooth}
+body {letter-spacing:-.008em}
+body.ar-ready {transition:background-color .4s var(--ar-ease),color .3s var(--ar-ease)}
+/* Precise alignment and hierarchy across pages */
+.app-shell {background:transparent}
+.main-area { --ar-header-gutter: clamp(18px,3.3vw,54px); padding-inline:var(--ar-header-gutter); }
+.main-area > .topbar { margin-inline:calc(-1 * var(--ar-header-gutter)); padding-inline:var(--ar-header-gutter); }
+.sidebar {background:var(--sidebar);border-right:1px solid var(--ar-hairline);padding-top:29px;}
+.brand {font-weight:790;letter-spacing:-.055em}
+.brand-mark {border-radius:14px;transition:transform .25s var(--ar-ease-spring)}
+.brand:hover .brand-mark {transform:rotate(-9deg) scale(1.045)}
+.nav-label {font-size:10px;letter-spacing:.14em;opacity:.78}
+.nav-item {border-radius:12px;position:relative;isolation:isolate;overflow:hidden;transition:background-color .22s var(--ar-ease),color .22s var(--ar-ease),transform .22s var(--ar-ease),border-color .22s var(--ar-ease)}
+.nav-item.active {font-weight:735}
+body[data-theme="light"] .nav-item.active {color:#171717;background:#eaeaea;border-color:rgba(0,0,0,.04)}
+body[data-theme="dark"] .nav-item.active {background:rgba(117,68,148,.25);border-color:rgba(192,143,224,.19);color:#ecd7ff}
+.nav-item:active {transform:scale(.984)}
+.topbar {background:var(--bg);box-shadow:0 1px 0 var(--ar-hairline);backdrop-filter:none; -webkit-backdrop-filter:none;}
+body[data-appearance="glass"] .topbar,body[data-appearance="tinted"] .topbar{backdrop-filter:blur(20px) saturate(130%);-webkit-backdrop-filter:blur(20px) saturate(130%)}
+.topbar .eyebrow {font-weight:800;letter-spacing:.21em;font-size:10px}
+body[data-theme="light"] .topbar .eyebrow {color:#292a2d}
+.desktop-tag {background:var(--surface);padding:8px 15px;box-shadow:inset 0 1px var(--ar-highlight)}
+.page-title {padding-block:3px 2px}
+h1 {font-weight:775;letter-spacing:-.062em;line-height:1.12}
+h2 {font-weight:750;letter-spacing:-.044em}
+.card,.stat-card,.doc-card,.metric,.source-item,.model-option {border-radius:var(--ar-radius-m);border-color:var(--ar-hairline);box-shadow:var(--panelShadow);transition:background-color .22s var(--ar-ease),border-color .22s var(--ar-ease),box-shadow .25s var(--ar-ease)}
+.card {padding:clamp(17px,2.2vw,27px)}
+body[data-theme="light"] .card,body[data-theme="light"] .stat-card {background:rgba(255,255,255,.98)}
+body[data-theme="dark"] .card,body[data-theme="dark"] .stat-card {background:#16161c}
+body[data-theme="dark"][data-appearance="glass"] .card, body[data-theme="dark"][data-appearance="tinted"] .card {background:rgba(22,20,28,.89)}
+body[data-theme="light"][data-appearance="glass"] .card,body[data-theme="light"][data-appearance="tinted"] .card {background:rgba(255,255,255,.92)}
+/* Reading surfaces remain opaque enough over personal photography. */
+body[data-wallpaper="image"] .card,body[data-wallpaper="image"] .stat-card {background:var(--surface)!important}
+body[data-theme="dark"][data-wallpaper="image"] .card,body[data-theme="dark"][data-wallpaper="image"] .stat-card {background:#17161d!important}
+.job-row {border-radius:12px;padding-inline:11px;margin-inline:-11px;width:calc(100% + 22px);border-bottom-color:var(--ar-hairline);transition:background-color .18s var(--ar-ease)}
+.job-row:hover {background:var(--surface2)}
+.job-row:last-child {margin-bottom:-4px}
+.company-logo{border-radius:13px}
+.score-badge,.offer-date-badge,.tag {border-radius:10px;font-weight:730}
+/* Active, focus, and hover controls have coherent size and contrast. */
+.btn,.icon-button,.nav-item,button[data-action="choose-model"],.filter-tab {transition:transform .22s var(--ar-ease-spring),background-color .2s var(--ar-ease),border-color .2s var(--ar-ease),box-shadow .2s var(--ar-ease)}
+.btn,.icon-button{position:relative;isolation:isolate;overflow:hidden;border-radius:12px;box-shadow:inset 0 1px var(--ar-highlight)}
+.btn.primary {font-weight:750}
+body[data-theme="dark"] .btn.primary {background:#67407e;color:#fff;border-color:#8e63a4;box-shadow:0 6px 24px rgba(118,66,153,.19),inset 0 1px rgba(255,255,255,.12)}
+body[data-theme="dark"] .btn.primary:hover {background:#81509e;border-color:#aa7ac7}
+body[data-theme="light"] .btn.primary {background:#1b1b1c;color:#fff;border-color:#1b1b1c;box-shadow:0 6px 18px rgba(0,0,0,.13)}
+body[data-theme="light"] .btn.primary:hover {background:#303031}
+.btn:not(:disabled):hover,.icon-button:not(:disabled):hover {transform:translateY(-1px)}
+.btn:not(:disabled):active,.icon-button:not(:disabled):active {transform:translateY(0) scale(.97)}
+/* Animated liquid lens follows --bubble-x/y, updated by existing local delegated pointer handler.
+   Uses CSS only: no canvas, SVG filters, network calls or layout thrashing. */
+body:not([data-reduce-effects="true"]) .btn::after,
+body:not([data-reduce-effects="true"]) .icon-button::after,
+body:not([data-reduce-effects="true"]) .nav-item::after {
+  content:"";pointer-events:none;position:absolute;z-index:0;
+  width:120px;height:120px;left:var(--bubble-x,50%);top:var(--bubble-y,50%);
+  border-radius:50%;transform:translate(-50%,-50%) scale(.7);
+  background:radial-gradient(circle,rgba(255,255,255,.24) 0%,rgba(255,255,255,.09) 28%,transparent 72%);
+  opacity:0;transition:opacity .21s ease,transform .38s var(--ar-ease);mix-blend-mode:screen;
+}
+body[data-theme="light"]:not([data-reduce-effects="true"]) .btn::after,
+body[data-theme="light"]:not([data-reduce-effects="true"]) .nav-item::after,
+body[data-theme="light"]:not([data-reduce-effects="true"]) .icon-button::after {
+  background:radial-gradient(circle,rgba(155,160,180,.23) 0%,rgba(255,255,255,.12) 45%,transparent 74%);mix-blend-mode:multiply;
+}
+body:not([data-reduce-effects="true"]) .btn:hover::after,
+body:not([data-reduce-effects="true"]) .icon-button:hover::after,
+body:not([data-reduce-effects="true"]) .nav-item:hover::after {opacity:1;transform:translate(-50%,-50%) scale(1)}
+/* Existing ::before lens remains subtle; the new lens is the main highlight. */
+body:not([data-reduce-effects="true"]) .btn::before,body:not([data-reduce-effects="true"]) .nav-item::before {opacity:0!important}
+body:not([data-reduce-effects="true"]) .btn:hover::before,body:not([data-reduce-effects="true"]) .nav-item:hover::before {opacity:.18!important}
+button:focus-visible,.btn:focus-visible,.nav-item:focus-visible,.icon-button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible {outline:2px solid var(--accent)!important;outline-offset:3px}
+/* Motion system */
+@keyframes ar14-rise {from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+@keyframes ar14-glide {from{opacity:0;transform:translateX(-7px)}to{opacity:1;transform:translateX(0)}}
+body.ar-ready:not([data-reduce-effects="true"]) .page-title {animation:ar14-rise .42s var(--ar-ease-spring) both}
+body.ar-ready:not([data-reduce-effects="true"]) .card,body.ar-ready:not([data-reduce-effects="true"]) .stat-card {animation:ar14-rise .33s var(--ar-ease) both}
+body.ar-ready:not([data-reduce-effects="true"]) .stat-grid .stat-card:nth-child(2) {animation-delay:45ms}
+body.ar-ready:not([data-reduce-effects="true"]) .stat-grid .stat-card:nth-child(3) {animation-delay:90ms}
+body.ar-ready:not([data-reduce-effects="true"]) .nav-item.active {animation:ar14-glide .25s var(--ar-ease) both}
+/* Liquid appearance stays optional: large content surfaces prioritize contrast. */
+body[data-theme="dark"][data-appearance="tinted"] .sidebar{background:rgba(13,11,19,.94)}
+body[data-apple-glass="true"] .sidebar{background:rgba(250,250,251,.97)}
+body[data-apple-glass="true"] .topbar{background:rgba(250,250,251,.97)}
+/* Preview the theme before committing a preset. */
+.appearance-presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin:16px 0 22px}
+.appearance-preset{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:11px;padding:11px;border:1px solid var(--border);border-radius:17px;background:var(--surface2);color:var(--text);text-align:left;min-width:0;transition:transform .23s var(--ar-ease),border-color .2s ease,box-shadow .2s ease}
+.appearance-preset:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.08)}
+.appearance-preset.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--tint)}
+.preset-visual{position:relative;height:78px;border-radius:11px;overflow:hidden;border:1px solid rgba(127,127,127,.1);display:block}
+.preset-visual span{position:absolute;left:9px;top:8px;bottom:8px;width:22%;border-radius:7px}
+.preset-visual i{position:absolute;top:9px;left:35%;right:10px;height:14px;border-radius:6px}
+.preset-visual b{position:absolute;top:30px;left:35%;right:10px;bottom:9px;border-radius:7px}
+.preset-light{background:#f1f1f0}.preset-light span{background:#fff}.preset-light i{background:#dadada}.preset-light b{background:#fff}
+.preset-night{background:#090a0d}.preset-night span{background:#22202a}.preset-night i{background:#5d3a75}.preset-night b{background:#1c1a22}
+.preset-frost{background:radial-gradient(circle at 85% 15%,#c8c9cf,#f7f7f9 73%)}.preset-frost span,.preset-frost b{background:rgba(255,255,255,.7);box-shadow:inset 0 1px rgba(255,255,255,.9)}.preset-frost i{background:rgba(255,255,255,.8)}
+.preset-caption{display:flex;flex-direction:column;gap:3px;min-width:0}.preset-caption strong{font-weight:750;font-size:12px}.preset-caption small{font-size:10px;color:var(--muted);line-height:1.4}
+/* Reduce effects / system accessibility are authoritative over user design preferences. */
+body[data-reduce-effects="true"] *,body[data-reduce-effects="true"] *::before,body[data-reduce-effects="true"] *::after {
+  animation:none!important;transition-duration:0s!important;scroll-behavior:auto!important;
+}
+body[data-reduce-effects="true"] .btn::after,body[data-reduce-effects="true"] .nav-item::after,body[data-reduce-effects="true"] .icon-button::after {display:none!important}
+body[data-reduce-effects="true"] .card,body[data-reduce-effects="true"] .stat-card,body[data-reduce-effects="true"] .sidebar {backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.btn::after,.nav-item::after,.icon-button::after{display:none!important}}
+@media(max-width:990px){.appearance-presets{grid-template-columns:1fr 1fr}.preset-visual{height:68px}}
+@media(max-width:660px){.appearance-presets{grid-template-columns:1fr}.appearance-preset{flex-direction:row;align-items:center}.preset-visual{width:112px;flex-shrink:0}.main-area{--ar-header-gutter:15px}}
+
+/* v0.14.0 hotfix — The two light presets must look and behave differently.
+   Pure White is deliberately flat; Frosted Glass uses a luminous backdrop,
+   layered translucent panes and actual backdrop blur. No external assets. */
+body[data-theme="light"]:not([data-apple-glass="true"])[data-appearance="solid"] {
+  --bg:#f4f4f3;--sidebar:#fcfcfc;--surface:#fff;--surface2:#f5f5f4;
+  --border:#dededd;--panelShadow:0 3px 12px rgba(16,17,20,.035);
+}
+body[data-theme="light"]:not([data-apple-glass="true"])[data-wallpaper="none"]::before {
+  opacity:0;
+}
+body[data-theme="light"]:not([data-apple-glass="true"])[data-appearance="solid"] .card,
+body[data-theme="light"]:not([data-apple-glass="true"])[data-appearance="solid"] .stat-card,
+body[data-theme="light"]:not([data-apple-glass="true"])[data-appearance="solid"] .doc-card,
+body[data-theme="light"]:not([data-apple-glass="true"])[data-appearance="solid"] .sidebar,
+body[data-theme="light"]:not([data-apple-glass="true"])[data-appearance="solid"] .topbar {
+  background:#fff;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+  border-color:rgba(24,24,27,.105);
+  box-shadow:0 3px 13px rgba(22,22,24,.032);
+}
+body[data-apple-glass="true"] {
+  --bg:#e9eff6;--sidebar:rgba(250,252,255,.70);
+  --surface:rgba(255,255,255,.79);--surface2:rgba(246,249,254,.70);
+  --surface3:rgba(228,234,245,.68);--border:rgba(255,255,255,.73);
+  --panelShadow:0 20px 45px rgba(40,65,106,.115),0 2px 5px rgba(30,50,88,.06);
+}
+/* The atmospheric background is visible even without a personal photo. */
+body[data-apple-glass="true"]::before,
+body[data-apple-glass="true"][data-wallpaper="none"]::before,
+body[data-apple-glass="true"][data-wallpaper="gradient"]::before {
+  opacity:1;
+  background:
+    radial-gradient(ellipse 42% 54% at 85% 12%,rgba(158,189,230,.68),transparent 88%),
+    radial-gradient(ellipse 45% 52% at 9% 87%,rgba(209,201,233,.67),transparent 90%),
+    radial-gradient(ellipse 34% 38% at 52% 52%,rgba(255,255,255,.84),transparent 95%),
+    linear-gradient(143deg,#f9fbff,#dfe9f4 55%,#e9e4f0);
+  filter:none;
+  transform:none;
+}
+body[data-apple-glass="true"][data-wallpaper="image"]::before {
+  opacity:1;
+  background-image:linear-gradient(145deg,rgba(235,242,253,.48),rgba(224,230,245,.57)),var(--ar-wallpaper,none);
+  background-size:cover,cover;
+  background-position:center,center;
+  filter:blur(8px) saturate(.82);
+  transform:scale(1.02);
+}
+/* Reading surfaces are translucent but preserve black-on-white contrast.
+   These overrides follow the prior readability hotfix in the CSS cascade. */
+body[data-apple-glass="true"] .sidebar,
+body[data-apple-glass="true"] .topbar {
+  background:rgba(247,250,255,.72);
+  border-color:rgba(255,255,255,.82);
+  backdrop-filter:blur(26px) saturate(135%);
+  -webkit-backdrop-filter:blur(26px) saturate(135%);
+  box-shadow:inset 0 1px rgba(255,255,255,.87),0 8px 26px rgba(43,65,104,.085);
+}
+body[data-apple-glass="true"] .card,
+body[data-apple-glass="true"] .stat-card,
+body[data-apple-glass="true"] .doc-card,
+body[data-apple-glass="true"] .metric,
+body[data-apple-glass="true"] .source-item,
+body[data-apple-glass="true"] .model-option,
+body[data-apple-glass="true"][data-wallpaper="image"] .card,
+body[data-apple-glass="true"][data-wallpaper="image"] .stat-card {
+  background:linear-gradient(155deg,rgba(255,255,255,.88),rgba(244,249,255,.73)) !important;
+  border:1px solid rgba(255,255,255,.83);
+  backdrop-filter:blur(24px) saturate(150%);
+  -webkit-backdrop-filter:blur(24px) saturate(150%);
+  box-shadow:0 16px 38px rgba(39,65,111,.115),inset 0 1px rgba(255,255,255,.98);
+}
+body[data-apple-glass="true"][data-appearance="tinted"] .card,
+body[data-apple-glass="true"][data-appearance="tinted"] .stat-card,
+body[data-apple-glass="true"][data-appearance="tinted"] .doc-card,
+body[data-apple-glass="true"][data-appearance="tinted"] .metric,
+body[data-apple-glass="true"][data-appearance="tinted"] .source-item {
+  background:linear-gradient(135deg,rgba(var(--ar-tint-rgb,155,139,255),.11),rgba(255,255,255,.78) 58%),rgba(255,255,255,.72) !important;
+}
+body[data-apple-glass="true"] .model-option.active {
+  background:linear-gradient(140deg,rgba(235,242,255,.88),rgba(255,255,255,.78)) !important;
+  border-color:rgba(105,127,167,.38);
+}
+body[data-apple-glass="true"] .desktop-tag,
+body[data-apple-glass="true"] .side-profile,
+body[data-apple-glass="true"] .icon-button,
+body[data-apple-glass="true"] .btn:not(.primary),
+body[data-apple-glass="true"] input:not([type="range"]):not([type="checkbox"]):not([type="color"]),
+body[data-apple-glass="true"] select,
+body[data-apple-glass="true"] textarea {
+  background:rgba(255,255,255,.74);
+  border-color:rgba(150,168,194,.36);
+  box-shadow:inset 0 1px rgba(255,255,255,.9),0 2px 9px rgba(43,68,104,.045);
+}
+body[data-apple-glass="true"] .nav-item.active {
+  background:rgba(255,255,255,.68);
+  border-color:rgba(255,255,255,.8);
+  box-shadow:0 4px 13px rgba(50,80,115,.09),inset 0 1px rgba(255,255,255,.92);
+}
+/* Explicit performance or OS accessibility settings always win. */
+body[data-apple-glass="true"][data-reduce-effects="true"] .card,
+body[data-apple-glass="true"][data-reduce-effects="true"] .stat-card,
+body[data-apple-glass="true"][data-reduce-effects="true"] .sidebar,
+body[data-apple-glass="true"][data-reduce-effects="true"] .topbar {
+  background:#f8fafc !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+@media (prefers-reduced-transparency:reduce) {
+  body[data-apple-glass="true"] .sidebar,
+  body[data-apple-glass="true"] .topbar,
+  body[data-apple-glass="true"] .card,
+  body[data-apple-glass="true"] .stat-card,
+  body[data-apple-glass="true"] .doc-card,
+  body[data-apple-glass="true"] .model-option {background:#fafcff !important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+}
+
+/* macOS : barre de titre intégrée (titleBarStyle « hiddenInset »).
+   Sans zone de déplacement, la fenêtre ne pourrait pas être déplacée et les
+   boutons fermer/réduire/agrandir chevaucheraient la barre latérale. */
+.window-drag{display:none}
+html[data-platform="darwin"] .window-drag{display:block;position:fixed;top:0;left:0;right:0;height:28px;-webkit-app-region:drag;z-index:60}
+html[data-platform="darwin"] .sidebar{padding-top:52px}
+html[data-platform="darwin"] .brand,
+html[data-platform="darwin"] .topbar{-webkit-app-region:drag}
+html[data-platform="darwin"] .topbar :is(button,a,input,select,textarea,label,[role="button"],[data-action],[data-nav]){-webkit-app-region:no-drag}

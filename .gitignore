@@ -1,9 +1,19 @@
 node_modules/
 release/
 dist/
-.DS_Store
 *.log
 .env
+
+# Fichiers système macOS / Windows
+.DS_Store
+__MACOSX/
+._*
+Thumbs.db
+desktop.ini
+
+# Relais Cloudflare (wrangler)
+relay/.wrangler/
+relay/.dev.vars
 
 # Données privées et identifiants potentiellement exportés
 radar-data.json
@@ -28,6 +38,7 @@ user-data/
 exports/
 
 # Fichiers temporaires générés par les tests
-preview-*.png
+/preview-*.png
+selftest-*.json
 playwright-report/
 test-results/

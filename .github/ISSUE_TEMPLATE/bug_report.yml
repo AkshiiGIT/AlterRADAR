@@ -1,0 +1,51 @@
+name: Signaler un bug
+description: Un problème dans AlterRADAR sur Windows ou macOS
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci ! **Ne colle jamais de CV, de jeton Telegram, de mot de passe SMTP ou de clé API** : des données fictives suffisent.
+        Pour une faille de sécurité, utilise plutôt le signalement privé (voir SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: Version d’AlterRADAR
+      description: Paramètres → À propos
+      placeholder: "0.14.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Système
+      options:
+        - Windows 11
+        - Windows 10
+        - macOS (puce Apple)
+        - macOS (Intel)
+        - Autre
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Installation
+      options:
+        - Installateur (Setup.exe / .dmg)
+        - Version portable Windows
+        - Depuis le code source (npm start)
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Que s’est-il passé ?
+      description: Étapes pour reproduire, résultat obtenu et résultat attendu.
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Message d’erreur ou capture d’écran
+      description: Masque toute donnée personnelle avant de joindre une capture.

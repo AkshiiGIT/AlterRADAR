@@ -5,7 +5,7 @@ Chaque utilisateur possède son **bot Telegram personnel**, créé gratuitement 
 1. Via Telegram, ouvrir [@BotFather](https://t.me/BotFather), utiliser `/newbot`, choisir un nom unique et récupérer le token secret.
 2. Dans **Surveillance & Telegram**, coller le token, puis **Enregistrer**. Le token est chiffré avec le coffre du système (Electron `safeStorage`), si disponible.
 3. Cliquer sur **Générer le lien de liaison**. AlterRADAR affiche un code aléatoire de **16 caractères hexadécimaux**, valable 10 minutes, et l'URL de votre bot.
-4. Ouvir une conversation **privée** avec votre bot, envoyer **seulement la clé**. Les commandes `/connect CLE` et `/start CLE` sont aussi acceptées. Le polling `getUpdates` associe le Chat ID du message seulement si le code et l'expiration sont exacts et si l'émetteur est bien le propriétaire de ce chat privé.
+4. Ouvrir une conversation **privée** avec votre bot, envoyer **seulement la clé**. Les commandes `/connect CLE` et `/start CLE` sont aussi acceptées. Le polling `getUpdates` associe le Chat ID du message seulement si le code et l'expiration sont exacts et si l'émetteur est bien le propriétaire de ce chat privé.
 5. L'ordinateur confirme automatiquement la liaison via un message sur le bot. Activer les notifications et, si souhaité, la validation des dossiers.
 
 Pour une offre, le bot montre le titre, l'entreprise, le lieu, un extrait descriptif, le lien de l'annonce, et le contact RH/LinkedIn **uniquement si celui-ci a été ajouté depuis une source vérifiée**. Si l'option est activée, il transmet deux fichiers `.docx` (CV + lettre) et les boutons **Valider ce dossier / À corriger**.

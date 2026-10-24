@@ -33,7 +33,7 @@ try:
   html=html.replace('<script defer src="app.js"></script>','')
   page.set_content(html)
   page.evaluate(mock)
-  page.add_script_tag(content=(p/'renderer/app.js').read_text())
+  page.add_script_tag(content=(p/'renderer/job-sort.js').read_text());page.add_script_tag(content=(p/'renderer/app.js').read_text())
   page.wait_for_selector('.hero',timeout=10000)
   page.screenshot(path=str(p/'preview-dashboard.png'),full_page=True)
   page.evaluate("ui.state.settings.theme='light';render()")

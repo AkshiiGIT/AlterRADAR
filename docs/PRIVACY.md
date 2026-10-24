@@ -1,28 +1,41 @@
-# Confidentialité — AlterRADAR v0.5
+# Confidentialité
 
-Créé et développé par **Akasche MAHINTAN**. Application gratuite, code sous licence MIT.
+AlterRADAR est une application gratuite sous licence MIT, créée et développée par **Akasche MAHINTAN**. Ce document décrit ce que fait le code source ; il ne remplace pas un audit de sécurité indépendant.
 
-## Données sur votre ordinateur
+## Données enregistrées sur ton ordinateur
 
-Le profil, les CV et lettres sources sous forme de textes extraits, les offres, les critères personnalisés, les textes IA, l'historique et les brouillons e-mail `.eml` sont stockés dans les données utilisateur de l'application sur **votre ordinateur**. Il n'existe pas de compte cloud AlterRADAR, de télémétrie intégrée ni de serveur hébergé par le créateur auquel vos fichiers seraient envoyés. Le créateur **n'a pas accès à vos données personnelles via AlterRADAR**.
+Le profil, le texte extrait du CV et de la lettre, les offres, les règles de tri, les documents générés, l’historique des candidatures et les brouillons e-mail `.eml` sont enregistrés localement :
 
-**Avertissement** : dans cette version, le fichier JSON et les brouillons ne sont pas **chiffrés au repos**. Les jetons Telegram et les mots de passe SMTP sont stockés séparément en utilisant Electron `safeStorage` dans les limites de la protection du système d'exploitation. Une sauvegarde ou un ordinateur compromis peut révéler vos fichiers.
-
-## Communications externes
-
-| Action | Données transmises |
+| Système | Dossier |
 |---|---|
-| Recherche d'offres Greenhouse/Lever | Requêtes réseau aux plateformes d'offres, sans transmettre les CV |
-| IA Ollama locale | Textes envoyés uniquement à l'instance Ollama de `127.0.0.1` |
-| Alertes Telegram activées | Informations sur les offres envoyées aux serveurs Telegram |
-| Validation Telegram de documents activée | CV et lettre générés envoyés aux serveurs Telegram |
-| Mode brouillon (.eml) | Aucun e-mail transmis au recruteur par AlterRADAR ; création d'un fichier local |
-| Mode SMTP après validation | Texte et deux pièces jointes transmis au serveur du fournisseur e-mail puis au destinataire |
+| Windows | `%APPDATA%\AlterRADAR` |
+| macOS | `~/Library/Application Support/AlterRADAR` |
 
-Les échanges avec des bots Telegram ne bénéficient pas du chiffrement de bout en bout des Secret Chats. Les politiques des plateformes tierces s'appliquent. Une copie locale supprimée **n'efface pas** les copies déjà envoyées à Telegram ni aux recruteurs.
+On y trouve `radar-data.json` (données principales), `drafts/` (brouillons `.eml`), `candidate-backups/` (archives créées lors d’un changement de candidat) et l’éventuel fond d’écran importé.
 
-## Coordonnées et assistance
+Il n’existe ni compte AlterRADAR, ni serveur central, ni télémétrie. Le créateur n’a aucun accès à tes données.
 
-Créateur : Akasche MAHINTAN. GitHub : https://github.com/akshiiGIT. E-mail : akasche.pro@gmail.com. Lien LinkedIn : à renseigner par le créateur avant distribution.
+Ces fichiers **ne sont pas chiffrés au repos**. Les secrets (jeton Telegram, mot de passe SMTP, clés API France Travail, Adzuna, Jooble et La bonne alternance) sont chiffrés séparément avec le coffre du système via Electron `safeStorage` (DPAPI sous Windows, trousseau sous macOS). Une sauvegarde non protégée ou un compte utilisateur compromis peut exposer le reste des données : protège ta session.
 
-Cette description reflète l'architecture du code source ; elle ne constitue pas un audit de sécurité indépendant. Tester les échanges et les scénarios de suppression avant publication grand public.
+Pour tout effacer : quitte AlterRADAR (**Quitter complètement** si la surveillance est active) puis supprime le dossier ci-dessus.
+
+## Ce qui sort de ton ordinateur
+
+| Action | Destinataire | Données transmises |
+|---|---|---|
+| Recherche d’offres | Plateformes d’emploi activées (France Travail, Adzuna, Arbeitnow, Remotive…) et tableaux ATS publics | Mots-clés de métier, villes et rayons, identifiants API si tu les as fournis. Jamais le CV ni la lettre. |
+| Zones géographiques et tri par distance | `geo.api.gouv.fr` | Noms de communes uniquement |
+| Vérification des dates de publication | Site de l’annonce | Une requête vers la page publique de l’offre, sans donnée personnelle |
+| IA (profil, CV, lettre) | Ollama sur ton ordinateur (`127.0.0.1`) | CV, lettre, profil et annonce ; rien ne sort de la machine |
+| Alertes Telegram (si activées) | Serveurs Telegram | Titre, entreprise, lieu, extrait et lien des offres |
+| Validation Telegram (si activée) | Serveurs Telegram | CV et lettre générés au format `.docx` |
+| Envoi SMTP (si configuré et validé) | Ton fournisseur e-mail, puis le recruteur | E-mail et deux pièces jointes |
+| Relais La bonne alternance (si déployé) | Cloudflare puis l’API La bonne alternance | Ville, rayon, codes métier |
+
+Les conversations avec un bot Telegram ne sont pas chiffrées de bout en bout. Les politiques de confidentialité des services tiers s’appliquent. Supprimer une donnée locale n’efface pas les copies déjà envoyées à Telegram ou à un recruteur.
+
+## Contact
+
+Créateur : Akasche MAHINTAN · [GitHub](https://github.com/AkshiiGIT) · [LinkedIn](https://www.linkedin.com/in/akasche-mahintan) · akasche.pro@gmail.com
+
+Faille de sécurité : voir [SECURITY.md](../SECURITY.md).
