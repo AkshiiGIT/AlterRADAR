@@ -40,10 +40,10 @@ test('les imports restent compatibles avec le modèle de données v0.10',()=>{
 
 test('la base est modernisée et n’utilise pas de versions preview',()=>{
  assert.equal(pkg.version,'0.14.0');
- assert.equal(pkg.devDependencies.electron,'44.7.2');
+ assert.equal(pkg.devDependencies.electron,'44.9.3');
  assert.equal(pkg.devDependencies['electron-builder'],'26.15.3');
  assert.equal(pkg.dependencies['pdf-parse'],'2.4.5');
- assert.equal(pkg.dependencies.nodemailer,'10.1.1');
+ assert.equal(pkg.dependencies.nodemailer,'10.1.7');
  assert.deepEqual(pkg.engines,{node:'>=24 <25'});
 });
 
@@ -54,6 +54,8 @@ test('pipeline : Node 24, npm ci, audit et désactivation de publication builder
  assert.doesNotMatch(wf,/(?:actions\/(?:checkout|setup-node|upload-artifact|download-artifact)@v4|softprops\/action-gh-release@v2)/);
  assert.match(wf,/npm ci --no-audit --no-fund/);
  assert.match(wf,/npm audit --omit=dev --audit-level=high/);
+ // Electron est livré dans l'application : son audit ne doit pas être exclu avec les devDependencies.
+ assert.match(wf,/npm run audit:electron/);
  assert.match(wf,/npm run check:lock/);
  assert.match(pkg.scripts['dist:mac'],/--publish never/);
  assert.match(pkg.scripts['dist:win'],/--publish never/);

@@ -45,6 +45,8 @@ jobs:
         run: npm run smoke:deps
       - name: Audit des dépendances de production
         run: npm audit --omit=dev --audit-level=high
+      - name: Audit d'Electron (moteur livré dans l'application)
+        run: npm run audit:electron
       - name: Générer les installateurs
         run: npm run ${{ matrix.build }}
 

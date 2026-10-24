@@ -19,6 +19,12 @@ Créé et développé par **Akasche MAHINTAN** · licence MIT.
 - Export PDF : la police Arial est cherchée dans le vrai dossier Windows (`%WINDIR%`), et un export interrompu ne laisse plus de fichier vide.
 - Lanceurs « depuis les sources » : `Lancer-AlterRADAR.bat` en fins de ligne Windows (CRLF), détection d’une installation Electron incomplète.
 
+### Sécurité
+
+- Electron 44.9.3 : corrige une vulnérabilité élevée (certificats intermédiaires eMudhra compromis, [GHSA-jr5w-w6x2-84p9](https://github.com/advisories/GHSA-jr5w-w6x2-84p9)).
+- Nodemailer 10.1.7 : corrige l’analyse des adresses e-mail (avis de sécurité d’octobre 2026).
+- La CI audite aussi Electron (`npm run audit:electron`) : livré dans l’application, il échappait à `npm audit --omit=dev`.
+
 ### Documents
 
 - Les métadonnées des CV et lettres exportés (DOCX et PDF) portent le nom du candidat. Elles affichaient auparavant le nom du créateur d’AlterRADAR, visible par les recruteurs dans les propriétés du fichier.

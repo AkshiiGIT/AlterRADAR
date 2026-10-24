@@ -26,6 +26,7 @@
     "verify:release": "npm run test && npm run check:lock && npm run smoke:deps && npm run check:public",
     "check:lock": "node scripts/verify-lock.cjs",
     "audit:production": "npm audit --omit=dev --audit-level=high",
+    "audit:electron": "node scripts/audit-electron.cjs",
     "smoke:deps": "node scripts/smoke-dependencies.cjs",
     "diagnose:sources": "node scripts/diagnose-sources.cjs",
     "diagnose:dates": "node scripts/diagnose-dates.cjs",
@@ -34,12 +35,12 @@
   "dependencies": {
     "docx": "9.11.0",
     "mammoth": "1.13.0",
+    "nodemailer": "10.1.7",
     "pdf-parse": "2.4.5",
-    "pdfkit": "0.20.2",
-    "nodemailer": "10.1.1"
+    "pdfkit": "0.20.2"
   },
   "devDependencies": {
-    "electron": "44.7.2",
+    "electron": "44.9.3",
     "electron-builder": "26.15.3"
   },
   "build": {
