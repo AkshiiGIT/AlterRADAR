@@ -60,13 +60,16 @@ jobs:
           $report = Join-Path $PWD 'selftest-windows-x64.json'
           $exe = Join-Path $PWD 'release\win-unpacked\AlterRADAR.exe'
           if (-not (Test-Path $exe)) { Write-Error "Application introuvable : $exe"; exit 1 }
-          $p = Start-Process -FilePath $exe -ArgumentList "--self-test=$report" -Wait -PassThru
+          $p = Start-Process -FilePath $exe -ArgumentList "--self-test=$report" -PassThru
+          $null = $p.Handle
+          # 4 minutes maximum : en cas de blocage, le rapport indique l'étape en cours (« running »).
+          if (-not $p.WaitForExit(240000)) { Stop-Process -Id $p.Id -Force; if (Test-Path $report) { Get-Content $report }; Write-Error 'Autotest Windows bloqué (4 min)'; exit 1 }
           if (Test-Path $report) { Get-Content $report } else { Write-Error 'Aucun rapport produit' }
           if ($p.ExitCode -ne 0) { Write-Error "Autotest Windows en échec (code $($p.ExitCode))"; exit 1 }
       - name: Autotest des applications macOS (arm64 et x64)
         if: runner.os == 'macOS'
         shell: bash
-        timeout-minutes: 8
+        timeout-minutes: 12
         run: |
           set -euo pipefail
           found=0
@@ -80,7 +83,10 @@ jobs:
               echo "Rosetta indisponible : autotest x64 ignoré pour $app"; continue
             fi
             echo "Autotest $app ($archs)"
-            if ! "$bin" --self-test="$report" < /dev/null; then
+            # --use-mock-keychain : sans signature Apple, l'accès au trousseau ouvre une fenêtre
+            # de confirmation qui bloquerait la CI. 4 minutes maximum par application.
+            if ! perl -e 'alarm shift; exec @ARGV' 240 "$bin" --use-mock-keychain --self-test="$report" < /dev/null; then
+              echo "Autotest en échec ou bloqué (étape en cours : champ \"running\") :"
               cat "$report" 2>/dev/null || echo "Aucun rapport produit"
               exit 1
             fi

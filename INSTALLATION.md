@@ -33,7 +33,7 @@ Alternative en Terminal, après avoir copié l’application dans Applications :
 xattr -dr com.apple.quarantine /Applications/AlterRADAR.app
 ```
 
-À la première utilisation d’une clé Telegram, SMTP ou API, macOS peut demander l’accès au trousseau (« AlterRADAR Safe Storage ») : choisis **Toujours autoriser**.
+Au lancement, surtout après une mise à jour, macOS peut demander l’accès au trousseau « AlterRADAR Safe Storage » : saisis ton mot de passe de session et choisis **Toujours autoriser**. Cette clé sert à chiffrer tes jetons Telegram, SMTP et API sur ton Mac.
 
 Pour désinstaller : glisse AlterRADAR d’Applications vers la Corbeille. Les données se trouvent dans `~/Library/Application Support/AlterRADAR`.
 

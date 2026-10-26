@@ -120,4 +120,9 @@ test('CI : autotest des applications construites sur Windows et macOS, sans doss
   assert.match(wf, /release\/\*\.exe/);
   assert.doesNotMatch(wf, /path: release\/\*\s*$/m);
   assert.match(read('electron/main.cjs'), /async function runSelfTest\(\)/);
+  // macOS : sans trousseau simulé, la demande d'accès au trousseau bloque l'autotest en CI.
+  assert.match(read('electron/main.cjs'), /appendSwitch\('use-mock-keychain'\)/);
+  assert.match(wf, /--use-mock-keychain --self-test=/);
+  assert.match(wf, /alarm shift; exec @ARGV/);
+  assert.match(wf, /WaitForExit\(240000\)/);
 });

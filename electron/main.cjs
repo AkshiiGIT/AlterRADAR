@@ -40,6 +40,10 @@ const START_HIDDEN = process.argv.includes('--hidden');
 if (SELF_TEST) {
   const selfTestData = fs.mkdtempSync(path.join(os.tmpdir(), 'alterradar-selftest-'));
   app.setPath('userData', selfTestData);
+  // macOS : une application non signée par Apple déclenche une demande d'accès au trousseau
+  // (clé de chiffrement des cookies) qui bloque indéfiniment sans utilisateur. Electron utilise
+  // le même interrupteur pour ses propres tests. Le trousseau réel n'est jamais lu ni modifié.
+  app.commandLine.appendSwitch('use-mock-keychain');
   // Supprime les fichiers de test à la fin du processus (Chromium peut y recréer quelques fichiers de cache : dossier temporaire du système).
   process.once('exit', () => { try { fs.rmSync(selfTestData, { recursive: true, force: true }); } catch { /* fichier verrouillé */ } });
 }
@@ -1145,9 +1149,14 @@ function createWindow({forceShow=false}={}) {
 // Vérifie un build installé sans interaction : documents, PDF, e-mail, préchargement et interface.
 async function runSelfTest(){
   const report={version:app.getVersion(),platform:process.platform,arch:process.arch,electron:process.versions.electron,node:process.versions.node,packaged:app.isPackaged,checks:{}};
+  const target=SELF_TEST_ARG.includes('=')?SELF_TEST_ARG.slice(SELF_TEST_ARG.indexOf('=')+1):'';
+  // Rapport réécrit après chaque étape : si une étape bloque, le fichier indique laquelle.
+  const save=()=>{if(target)try{fs.writeFileSync(target,JSON.stringify(report,null,2));}catch{}};
   const check=async(name,fn)=>{
+    report.running=name;save();
     try{report.checks[name]={ok:true,detail:await fn()};}
     catch(error){report.checks[name]={ok:false,detail:String(error?.message||error).slice(0,400)};}
+    delete report.running;save();
   };
   const profile={name:'Camille Martin',email:'camille@example.com',location:'Paris',roles:'Développeuse web'};
   const job={company:'Entreprise de démonstration',title:'Alternance développeur front-end'};
@@ -1201,10 +1210,8 @@ async function runSelfTest(){
     }finally{win.destroy();}
   });
   report.ok=Object.values(report.checks).every(c=>c.ok);
-  const output=JSON.stringify(report,null,2);
-  console.log(output);
-  const target=SELF_TEST_ARG.includes('=')?SELF_TEST_ARG.slice(SELF_TEST_ARG.indexOf('=')+1):'';
-  if(target)fs.writeFileSync(target,output);
+  console.log(JSON.stringify(report,null,2));
+  save();
   return report.ok?0:1;
 }
 app.on('second-instance', () => { if (state) showMainWindow(); });

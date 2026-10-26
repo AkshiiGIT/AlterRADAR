@@ -35,6 +35,7 @@ Créé et développé par **Akasche MAHINTAN** · licence MIT.
 - macOS : signature « ad hoc » des applications. Sans certificat Apple, cela évite le message « AlterRADAR est endommagé » sur Mac Apple Silicon (un avertissement Gatekeeper reste normal).
 - Mode `--self-test` : chaque application construite par GitHub Actions est lancée sur Windows et macOS pour vérifier la génération DOCX/PDF, la lecture PDF, le brouillon e-mail, l’icône et l’affichage de l’interface.
 - Nouveau workflow de tests sur Windows et macOS à chaque push et pull request.
+- Autotest macOS en CI : trousseau simulé (`--use-mock-keychain`, comme les tests d’Electron) pour éviter la fenêtre d’accès au trousseau qui bloquait le build, et 4 minutes maximum par application avec l’étape en cours indiquée dans le rapport.
 - La Release ne contient que les installateurs et `SHA256SUMS.txt`, sans les dossiers décompressés.
 - `.gitattributes` pour des fins de ligne identiques quel que soit le système du contributeur.
 - Documentation réécrite : README, guide d’installation, procédure de publication, politique de sécurité.
