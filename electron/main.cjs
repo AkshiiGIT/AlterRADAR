@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme, Menu, Tray, Notification, safeStorage, clipboard, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme, Menu, Tray, Notification, safeStorage, clipboard, screen, session } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -23,7 +23,7 @@ const creator=require('../config/creator.json');
 const {SOURCES,DEFAULT_ENABLED,RELAY_URL,searchAll,validSourceIds,migrateEnabledSources}=require('../lib/sources.cjs');
 const {CATALOG,identifyAts,expandFromKnownUrls}=require('../lib/ats.cjs');
 const {mergeDiscovered,institutionListing}=require('../lib/discovery.cjs');
-const {verifyJobDate}=require('../lib/publication-date.cjs');
+const {verifyJobDate,decisionRequeteRendu}=require('../lib/publication-date.cjs');
 const {extractCandidateProfile,validatedProfile}=require('../lib/profile.cjs');
 const {suggestedJobs,analyzeMatch,careerFit}=require('../lib/matching.cjs');
 const {normalizeTypes,classifyJob,eligibleContract,contractLabel}=require('../lib/contracts.cjs');
@@ -852,13 +852,78 @@ async function scanOnce() {
     return result;
   }finally{scanning=false;runtime.scanning=false;}
 }
+// ----- Dates de publication : affichage de la page dans une fenêtre cachée (repli) -----------
+// Utilisé seulement quand la lecture simple échoue (blocage anti-robot, redirections, page en
+// JavaScript) ou ne trouve pas de date. La fenêtre est jetable et isolée :
+//   - session en mémoire (pas de « persist: ») : aucun cookie ni cache écrit sur le disque ;
+//   - sandbox, aucune intégration Node, aucune permission (caméra, notifications…), pas de popup,
+//     pas de téléchargement, son coupé ;
+//   - réseau local interdit, ressources tierces (traceurs, publicité) bloquées, images et médias
+//     bloqués : voir decisionRequeteRendu dans lib/publication-date.cjs.
+// Seule la page HTML est relue, puis jetée ; les mêmes règles de preuve s'appliquent.
+const PARTITION_DATES='verification-dates';
+const sitesParPage=new Map(); // identifiant du webContents → site de la page principale
+let sessionDatesPrete=null;
+function sessionDates(){
+  if(sessionDatesPrete)return sessionDatesPrete;
+  const ses=session.fromPartition(PARTITION_DATES,{cache:false});
+  ses.setPermissionRequestHandler((_contenu,_permission,repondre)=>repondre(false));
+  ses.setPermissionCheckHandler(()=>false);
+  ses.on('will-download',evenement=>evenement.preventDefault());
+  // Le moteur est un vrai Chromium : on retire seulement les mentions de l'application et d'Electron.
+  ses.setUserAgent(ses.getUserAgent().replace(/\s(?:AlterRADAR|alterradar-desktop|Electron)\/\S+/gi,''));
+  ses.webRequest.onBeforeRequest((details,repondre)=>{
+    const decision=decisionRequeteRendu({url:details.url,type:details.resourceType,sitePage:sitesParPage.get(details.webContentsId)});
+    if(details.resourceType==='mainFrame'&&!decision.annuler&&details.webContentsId)sitesParPage.set(details.webContentsId,decision.site);
+    repondre({cancel:decision.annuler});
+  });
+  return sessionDatesPrete=ses;
+}
+const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function afficherPagePourDate(url,{delaiMs=15000}={}){
+  const fenetre=new BrowserWindow({show:false,width:1280,height:900,webPreferences:{session:sessionDates(),sandbox:true,contextIsolation:true,nodeIntegration:false,images:false,webgl:false,spellcheck:false,backgroundThrottling:false,autoplayPolicy:'user-gesture-required'}});
+  const contenu=fenetre.webContents;const id=contenu.id;
+  contenu.setAudioMuted(true);
+  contenu.setWindowOpenHandler(()=>({action:'deny'}));
+  contenu.on('will-attach-webview',evenement=>evenement.preventDefault());
+  let minuterie;
+  try{
+    const chargement=contenu.loadURL(url).catch(async error=>{
+      // ERR_ABORTED : la page a enchaîné une redirection JavaScript ; on attend la suivante.
+      if(!/ERR_ABORTED|\(-3\)/.test(String(error?.message)))throw error;
+      if(contenu.isLoading())await new Promise(resolve=>contenu.once('did-stop-loading',resolve));
+    });
+    await Promise.race([chargement,new Promise((_,rejeter)=>{minuterie=setTimeout(()=>rejeter(new Error('Délai d’affichage dépassé')),delaiMs);})]);
+    // Beaucoup de sites ajoutent la date après le chargement : on lui laisse jusqu'à 5 s pour apparaître.
+    const sonde='Boolean(document.querySelector(\'script[type="application/ld+json"],[itemprop="datePosted"]\')||/publi|mise en ligne|posted/i.test(document.body?document.body.innerText.slice(0,30000):""))';
+    for(let essai=0;essai<12;essai++){
+      if(await contenu.executeJavaScript(sonde,true).catch(()=>false))break;
+      await pause(400);
+    }
+    await pause(300);
+    return String(await contenu.executeJavaScript('document.documentElement.outerHTML',true)).slice(0,1_500_000);
+  }finally{
+    clearTimeout(minuterie);sitesParPage.delete(id);
+    if(!fenetre.isDestroyed())fenetre.destroy();
+  }
+}
+
 // Dates de publication : vérification EN ARRIÈRE-PLAN de l'annonce officielle.
 // Ne stocke aucun HTML; n'envoie ni CV, ni lettre, ni identifiant personnel.
-async function checkPublicationOne(id,{force=false}={}){
+// Une même offre n'est jamais vérifiée deux fois en même temps (file automatique + clic manuel).
+const verificationsDatesEnCours=new Map();
+function checkPublicationOne(id,options={}){
+  if(verificationsDatesEnCours.has(id))return verificationsDatesEnCours.get(id);
+  const promesse=verifierDatePublication(id,options).finally(()=>verificationsDatesEnCours.delete(id));
+  verificationsDatesEnCours.set(id,promesse);
+  return promesse;
+}
+async function verifierDatePublication(id,{force=false}={}){
   const job=state.jobs.find(j=>j.id===id);
   if(!job||!job.url)return null;
   if(!force&&job.dateCheckedAt&&Date.now()-Date.parse(job.dateCheckedAt)<24*3600_000)return null;
   const result=await verifyJobDate(job,{
+    renderPage:url=>afficherPagePourDate(url),
     aiExtract:state.settings.selectedModel?async excerpt=>{
       const selected=state.settings.selectedModel;
       try{
@@ -892,6 +957,12 @@ async function checkPublicationQueue(){
   if(checkingPublicationDates)return;
   checkingPublicationDates=true;
   try{
+    // Vérification v2 (redirecteurs, pages lourdes, affichage caché) : les offres restées sans
+    // date sont revérifiées une fois, sans attendre le délai habituel de 24 h.
+    if(state.settings.verificationDatesVersion!==2){
+      for(const job of state.jobs)if(job.dateCheckStatus==='error'||job.dateCheckStatus==='unavailable')delete job.dateCheckedAt;
+      state.settings.verificationDatesVersion=2;persist();
+    }
     // 18 annonces maximum par passage; au plus deux requêtes simultanées.
     // Priorité aux offres compatibles et sans date officielle.
     const candidates=state.jobs.filter(j=>j.url).filter(j=>!j.dateCheckedAt||Date.now()-Date.parse(j.dateCheckedAt)>24*3600_000)

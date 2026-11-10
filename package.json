@@ -32,7 +32,8 @@
     "diagnose:dates": "node scripts/diagnose-dates.cjs",
     "self-test": "electron . --self-test",
     "ia:serveur": "node serveur-ia/serveur.cjs",
-    "ia:chercher": "node serveur-ia/chercher.cjs"
+    "ia:chercher": "node serveur-ia/chercher.cjs",
+    "dates:diagnostic": "node scripts/diagnostic-dates.cjs"
   },
   "dependencies": {
     "docx": "9.11.0",

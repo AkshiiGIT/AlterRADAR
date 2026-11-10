@@ -115,6 +115,7 @@ npm run smoke:deps   # génération réelle DOCX, PDF et e-mail
 npm run self-test    # lance Electron sans fenêtre et vérifie documents, PDF et interface
 npm run ia:serveur   # assistant IA exposé en HTTP (port 3000), voir serveur-ia/README.md
 npm run ia:chercher -- "ta question"   # tester la recherche dans la documentation, sans modèle
+npm run dates:diagnostic   # bilan des dates de publication vérifiées, site par site (lecture seule)
 npm run dist:win     # installateurs Windows (sur Windows)
 npm run dist:mac     # .dmg et .zip macOS (sur un Mac)
 ```
