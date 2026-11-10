@@ -30,7 +30,7 @@ const {normalizeTypes,classifyJob,eligibleContract,contractLabel}=require('../li
 const OLLAMA_BASE = 'http://127.0.0.1:11434';
 const {recommendedDownload, parsePullUpdate, createPullTracker, explainOllamaError, QWEN_CATALOG, allowedModel} = require('../lib/ollama.cjs');
 const {creerIA, demarrer, codeErreur} = require('../lib/ia/index.cjs');
-const {depuisEtatAlterRadar} = require('../lib/ia/assistant.cjs');
+const {depuisEtatAlterRadar, offresDepuisEtat} = require('../lib/ia/assistant.cjs');
 const MODELE_EMBED = 'paraphrase-multilingual';
 const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024;
 const APP_ID = 'fr.alterradar.desktop';
@@ -166,10 +166,11 @@ function iaLocale(){
     modele:()=>state.settings.selectedModel,
     modeleEmbed:MODELE_EMBED,
     candidatures:()=>depuisEtatAlterRadar(state),
+    offres:()=>offresDepuisEtat(state),
     racine:path.join(__dirname,'..')
   });
 }
-const MESSAGES_ENTREE={'texte invalide':'Colle le texte d’une annonce (20 000 caractères maximum).','ton invalide':'Ton inconnu : choisis neutre ou direct.','question invalide':'Pose une question (1 000 caractères maximum).','route inconnue':'Fonction inconnue.'};
+const MESSAGES_ENTREE={'texte invalide':'Colle le texte d’une annonce (20 000 caractères maximum).','ton invalide':'Ton inconnu : choisis neutre ou direct.','question invalide':'Pose une question (1 000 caractères maximum).','route inconnue':'Fonction inconnue.','message invalide':'Écris un message (20 000 caractères maximum).','conversation invalide':'Conversation invalide : ouvre une nouvelle conversation.','contexte invalide':'Offre ouverte invalide.'};
 function messageIA(error){
   if(error?.name==='RequeteInvalide')return MESSAGES_ENTREE[error.message]||'Demande invalide.';
   if(error?.name==='ModeleIndisponible'){
@@ -1163,6 +1164,7 @@ function registerIpc() {
   ipcMain.handle('ia:lancer', (event, id, route, corps) => lancerFluxIA(event.sender, id, route, corps));
   ipcMain.handle('ia:annuler', (_e, id) => { const flux = fluxIA.get(String(id || '')); if (flux) flux.abort(); return Boolean(flux); });
   ipcMain.handle('ia:journal', () => iaLocale().journal.lister());
+  ipcMain.handle('ia:oublier', (_e, conversation) => { iaLocale().oublierConversation(conversation); return true; });
   ipcMain.handle('ia:etat', () => etatIA());
 }
 function windowBackground(){

@@ -62,6 +62,7 @@ contextBridge.exposeInMainWorld('radar', Object.freeze({
   iaLancer: (id,route,corps) => ipcRenderer.invoke('ia:lancer',id,route,corps),
   iaAnnuler: id => ipcRenderer.invoke('ia:annuler',id),
   iaJournal: () => ipcRenderer.invoke('ia:journal'),
+  iaOublier: conversation => ipcRenderer.invoke('ia:oublier',conversation),
   iaEtat: () => ipcRenderer.invoke('ia:etat'),
   onIaEvenement: listener => {
     if(typeof listener !== 'function')return ()=>{};

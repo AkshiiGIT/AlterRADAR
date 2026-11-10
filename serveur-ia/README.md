@@ -5,6 +5,8 @@ Voie : **JavaScript (Node), sans dépendance npm** pour toute la partie IA.
 
 Les trois fonctions du cours sont intégrées dans l’application (onglet **Assistant IA**) et
 exposées aussi en HTTP par ce serveur, qui respecte le contrat de route du cours (`app/CONTRAT.md`).
+Elles alimentent aussi un **chatbot disponible sur toutes les pages** (`lib/ia/chat.cjs`, route
+`POST /api/chat` hors contrat), qui refuse tout ce qui sort du cadre de l’application.
 
 ## Architecture
 
@@ -25,6 +27,7 @@ Ollama (sa politique de sécurité impose `connect-src 'none'`).
 | `lib/ia/assistant.cjs` | 10 | déclaration des outils (TODO 6), table explicite (TODO 7), boucle d’appel d’outil (TODO 8) |
 | `lib/ia/recherche.cjs` | 12-13 | découpage sur les titres (TODO 9), vectorisation unique (TODO 10), cosinus (TODO 11), repli TF-IDF |
 | `lib/ia/documents.cjs` | 13 | pipeline RAG, sources avant les fragments, refus hors corpus (TODO 12) |
+| `lib/ia/chat.cjs` | 9, 10, 13 | chatbot : routeur à sortie JSON contrainte, puis résumé, outil, RAG, infos entreprise ou conseil ; refus fixe hors cadre |
 | `lib/ia/commun.cjs` | | évènements, premier évènement consommé avant de répondre, journal |
 | `serveur-ia/serveur.cjs` | | transport HTTP / SSE du contrat |
 | `electron/main.cjs` | | transport IPC de l’application |
@@ -44,6 +47,24 @@ Ollama (sa politique de sécurité impose `connect-src 'none'`).
 3. **Timeout et repli** : 60 s par appel, 180 s par flux. Ollama injoignable : 503 avant le flux. Modèle d’embedding absent : repli sur une recherche par mots-clés.
 4. **Journal** : chaque appel est noté (modèle, tokens d’entrée et de sortie, durée, issue), jamais le contenu. Il est visible dans l’onglet et dans la console du serveur.
 5. **Rien n’est exposé** : messages d’erreur neutres, aucune trace d’exécution, aucune URL de modèle. Le serveur écoute sur `127.0.0.1`.
+
+## Le cadre du chatbot
+
+Le chatbot ne répond que sur l’alternance, les stages, la recherche d’emploi, le développement
+informatique, les candidatures, les annonces et l’utilisation d’AlterRADAR. Trois barrières :
+
+1. **Un routeur** classe chaque message dans l’une de six catégories : `resume_offre`, `entreprise`,
+   `candidatures`, `aide_app`, `conseil` ou `hors_sujet`. Sa réponse est contrainte par un schéma JSON
+   (`format` d’Ollama). `hors_sujet`, ou une réponse illisible, donne un refus fixe : aucun texte
+   n’est généré. En cas de doute, on refuse.
+2. **Une consigne par catégorie**, qui répète le cadre et la phrase de refus. Le résumé refuse un
+   texte qui n’est pas une offre.
+3. **Des faits venus d’AlterRADAR** : outils sur les candidatures, documentation du dépôt, annonces
+   enregistrées. Pour une entreprise, seules ses annonces et le suivi des candidatures sont fournis,
+   sans accès au web ni connaissances du modèle.
+
+L’interface envoie le message et, au plus, l’identifiant de l’offre ouverte. L’historique (3 échanges)
+est gardé dans le processus principal, jamais renvoyé par le client.
 
 Garde-fous supplémentaires :
 
@@ -69,7 +90,7 @@ Réglages : `PORT`, `OLLAMA_BASE_URL`, `MODEL_BASE` (défaut `qwen2.5:3b`), `MOD
 ## Vérifier
 
 ```bash
-npm test                               # 190 tests, dont 16 pour l’assistant (faux Ollama, aucun modèle requis)
+npm test                               # 202 tests, dont 28 pour l’assistant et le chatbot (faux Ollama, aucun modèle requis)
 
 # Suite de conformité du cours, depuis le dépôt du cours, ce serveur lancé sur le port 3000 :
 make conformite

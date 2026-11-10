@@ -7,6 +7,7 @@
  *   POST /api/resumer    { "texte": "...", "ton": "neutre" | "direct" }
  *   POST /api/assistant  { "question": "..." }
  *   POST /api/documents  { "question": "..." }
+ *   POST /api/chat       { "message": "...", "conversation"?: "id", "contexte"?: { "offreId" } }  (chatbot, hors contrat)
  *
  * Réponse nominale : 200, text/event-stream, un évènement « data: {...} » par fragment,
  * le dernier portant { done: true, usage: { entree, sortie, ms } }.
@@ -21,7 +22,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const { creerIA, demarrer, codeErreur } = require('../lib/ia/index.cjs');
-const { depuisEtatAlterRadar } = require('../lib/ia/assistant.cjs');
+const { depuisEtatAlterRadar, offresDepuisEtat } = require('../lib/ia/assistant.cjs');
 
 const PORT = Number(process.env.PORT || 3000);
 const HOTE = process.env.HOTE || '127.0.0.1';
@@ -30,10 +31,12 @@ const DONNEES = process.env.ALTERRADAR_DONNEES || path.join(__dirname, 'candidat
 const FRONT = process.env.FRONT_DIR ? path.resolve(process.env.FRONT_DIR) : '';
 const CORPS_MAX = 256 * 1024; // 20 000 caractères accentués, échappés en JSON, tiennent largement
 
-function lireCandidatures() {
-  try { return depuisEtatAlterRadar(JSON.parse(fs.readFileSync(DONNEES, 'utf8'))); }
-  catch { return []; }
+function lireEtat() {
+  try { return JSON.parse(fs.readFileSync(DONNEES, 'utf8')); }
+  catch { return {}; }
 }
+const lireCandidatures = () => depuisEtatAlterRadar(lireEtat());
+const lireOffres = () => offresDepuisEtat(lireEtat());
 
 function creerServeur(ia) {
   function envoyerJson(res, code, objet) {
@@ -63,7 +66,7 @@ function creerServeur(ia) {
   async function routeIA(req, res, route) {
     const corps = await lireCorps(req);
     if (corps.trop || corps.illisible) {
-      return envoyerJson(res, 400, { erreur: route === 'resumer' ? 'texte invalide' : 'question invalide' });
+      return envoyerJson(res, 400, { erreur: route === 'resumer' ? 'texte invalide' : route === 'chat' ? 'message invalide' : 'question invalide' });
     }
     // Si le client raccroche, on interrompt aussi l'appel au modèle.
     const annulation = new AbortController();
@@ -113,7 +116,7 @@ function creerServeur(ia) {
 
   return http.createServer(async (req, res) => {
     const chemin = new URL(req.url, 'http://x').pathname;
-    const route = /^\/api\/(resumer|assistant|documents)$/.exec(chemin)?.[1];
+    const route = /^\/api\/(resumer|assistant|documents|chat)$/.exec(chemin)?.[1];
     try {
       if (route && req.method === 'POST') return await routeIA(req, res, route);
       if (route || chemin.startsWith('/api/')) return envoyerJson(res, route ? 405 : 404, { erreur: route ? 'méthode non autorisée' : 'route inconnue' });
@@ -134,6 +137,7 @@ function configurationParDefaut() {
     modele: () => process.env.MODEL_BASE || 'qwen2.5:3b',
     modeleEmbed: process.env.MODEL_EMBED || 'paraphrase-multilingual',
     candidatures: lireCandidatures,
+    offres: lireOffres,
     racine: path.join(__dirname, '..'),
     delaiAppelMs: DELAI_MS,
     delaiFluxMs: Math.max(DELAI_MS, 120_000)

@@ -10,6 +10,10 @@ Créé et développé par **Akasche MAHINTAN** · licence MIT.
   - **Mes candidatures** : le modèle appelle des outils (`chercher_candidature`, `bilan_candidatures`) exécutés par AlterRADAR sur les données locales, puis rédige la réponse. Le contenu des CV et lettres n’est jamais transmis au modèle.
   - **Aide AlterRADAR** : recherche dans la documentation (embeddings `paraphrase-multilingual`, similarité cosinus), réponse limitée aux extraits cités, refus quand la documentation ne contient pas la réponse. Repli automatique sur une recherche par mots-clés si le modèle d’embedding est absent.
   - Journal des appels (modèle, tokens, durée, issue, jamais le contenu), timeout explicite, erreurs Ollama traduites en messages clairs.
+- **Chatbot sur toutes les pages** : bouton en bas à droite, panneau latéral sur grand écran, conversation conservée d’une page à l’autre. Questions prêtes à cliquer, adaptées à l’offre ouverte (résumé, infos entreprise, compétences à mettre en avant, questions d’entretien, suivi de la candidature). Bouton « Résumer avec l’assistant » dans la fiche d’une offre.
+  - Cadre strict : un routeur classe chaque message (sortie JSON contrainte). Hors cadre, ou classification illisible, le refus est fixe et aucun texte n’est généré.
+  - Infos entreprise limitées aux annonces enregistrées et au suivi des candidatures, sans accès au web ni connaissances du modèle.
+  - Mémoire des 3 derniers échanges, gardée dans le processus principal.
 - `npm run ia:serveur` : les trois fonctions exposées en HTTP (SSE), conformes au contrat de route du cours « Les Fondamentaux de l’IA » (ESGI 3IW).
 - L’autotest vérifie que la documentation lue par l’assistant est bien embarquée dans l’application.
 

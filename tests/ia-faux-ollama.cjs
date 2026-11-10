@@ -10,7 +10,7 @@
  */
 const http = require('node:http');
 
-function creerFauxOllama({ sansEmbed = false, latenceMs = 5 } = {}) {
+function creerFauxOllama({ sansEmbed = false, latenceMs = 5, routeurCasse = false } = {}) {
   const installes = new Set(['qwen2.5:3b', ...(sansEmbed ? [] : ['paraphrase-multilingual'])]);
   const appels = [];
 
@@ -29,12 +29,25 @@ function creerFauxOllama({ sansEmbed = false, latenceMs = 5 } = {}) {
   }
 
   function decisionOutil(question) {
-    if (/combien|bilan|lesquelles|ou j.en suis/i.test(question)) {
+    if (/combien|bilan|lesquelles|o[uù] j.en suis|o[uù] en sont/i.test(question)) {
       const statut = /entretien/i.test(question) ? 'entretien' : undefined;
       return { name: 'bilan_candidatures', arguments: statut ? { statut } : {} };
     }
     const chez = /chez\s+([^?]+)/i.exec(question)?.[1] || /(CMD-[\w-]+)/i.exec(question)?.[1] || /([A-Z][\w-]+(?:\s+[A-Z][\w-]+)*)\s*\?/.exec(question)?.[1];
     return chez ? { name: 'chercher_candidature', arguments: { recherche: chez.trim() } } : null;
+  }
+
+  // Routeur du chatbot : une catégorie choisie par mots-clés (le vrai modèle, lui, lit la consigne).
+  function routeFausse(messages) {
+    const brut = /"""\n([\s\S]*?)\n"""/.exec(messages.at(-1)?.content || '')?.[1] || '';
+    const t = brut.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const offre = /offre (?:de|chez) ([A-Z][\w ]+?)\s*\??$/.exec(brut)?.[1] || '';
+    if (/que sait-on|infos? sur|entreprise/.test(t)) return { categorie: 'entreprise', offre: /de ([A-Z][\w ]+?)\s*\??$/.exec(brut)?.[1] || '' };
+    if (/resum|annonce/.test(t)) return { categorie: 'resume_offre', offre };
+    if (/ma candidature|mes candidatures|combien|postule|relance/.test(t)) return { categorie: 'candidatures', offre: '' };
+    if (/telegram|installer|ollama|alterradar|donnees|ats\b/.test(t)) return { categorie: 'aide_app', offre: '' };
+    if (/alternance|stage|cv\b|lettre|react|javascript|entretien|metier|developp|competence|poste/.test(t)) return { categorie: 'conseil', offre: '' };
+    return { categorie: 'hors_sujet', offre: '' };
   }
 
   function texteFinal(messages) {
@@ -48,6 +61,8 @@ function creerFauxOllama({ sansEmbed = false, latenceMs = 5 } = {}) {
     }
     const systeme = messages[0]?.content || '';
     const user = messages.at(-1)?.content || '';
+    if (/sait d'une entreprise/.test(systeme)) return `D'après AlterRADAR : ${(/<donnees entreprise="([^"]+)">/.exec(user) || [])[1]} publie ${(user.match(/^Offre \d/gm) || []).length} offre(s) enregistrée(s).`;
+    if (/Ton cadre, et lui seul/.test(systeme)) return `Conseil : appuie-toi sur un projet concret (${messages.length - 2} messages d'historique).`;
     if (/documentation/.test(systeme)) {
       const titre = /titre="([^"]+)"/.exec(user)?.[1] || 'documentation';
       return `D'après la documentation, la réponse se trouve dans la section indiquée. Source : ${titre}`;
@@ -75,6 +90,10 @@ function creerFauxOllama({ sansEmbed = false, latenceMs = 5 } = {}) {
 
     const messages = corps.messages || [];
     const entree = Math.max(1, JSON.stringify(messages).length >> 2);
+    if (!corps.stream && corps.format) {
+      const contenu = routeurCasse ? 'pas du json' : JSON.stringify(routeFausse(messages));
+      return json(200, { message: { role: 'assistant', content: contenu }, done: true, prompt_eval_count: entree, eval_count: 8 });
+    }
     if (!corps.stream) {
       const question = messages.at(-1)?.content || '';
       const appel = corps.tools ? decisionOutil(question) : null;

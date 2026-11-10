@@ -238,7 +238,7 @@ function jobDetail(job){
   const mailReady=Boolean(job.applicationEmail&&ui.state.settings.smtpConfigured&&ui.state.settings.smtpHost);
   const history=job.history||[];
   return `<div class="card selected-card"><div class="card-header"><div><h3>${esc(job.title)}</h3><div class="subtitle">${esc(job.company)} · ${esc(job.contractTypes?.join(' / ')||'Type non identifié')} · ${esc(job.location||'Non précisé')} · ${esc(job.source||'Source inconnue')} · ${esc(job.atsName&&job.atsId?`ATS : ${job.atsName}`:'ATS non identifié')}</div><div class="offer-date-detail" style="gap:8px">${jobDateBadge(job)} <button type="button" class="btn small ghost" data-action="verify-job-date" data-id="${esc(job.id)}" title="Consulter l’annonce officielle pour confirmer la date de publication">${icon('refresh','s')} Vérifier sur le site</button></div>${job.dateCheckStatus==='error'?`<p class="note" role="status">Échec de la consultation de la page : <strong>${esc(job.dateCheckError||'Erreur réseau ou refus du site')}</strong>. Ouvre l’annonce officielle pour vérifier manuellement.</p>`:job.dateCheckStatus==='unavailable'?'<p class="note" role="status">Page consultée, mais aucune date de publication vérifiable dans son contenu. Certaines plateformes chargent les annonces par JavaScript ou ne publient aucune date.</p>':''}</div><span class="score-badge">${job.score}/100</span></div>
-    <div class="inline-actions"><button class="btn small" data-action="open-job" data-id="${esc(job.id)}">Voir l’offre ${icon('up-right','s')}</button><select class="status-select" data-id="${esc(job.id)}" aria-label="Statut de candidature">${STATUS.map(st=>`<option value="${esc(st)}" ${job.status===st?'selected':''}>${esc(statusName(st))}</option>`).join('')}</select></div>
+    <div class="inline-actions"><button class="btn small" data-action="open-job" data-id="${esc(job.id)}">Voir l’offre ${icon('up-right','s')}</button><button class="btn small" data-action="chat-resumer" data-id="${esc(job.id)}">${icon('sparkles','s')} Résumer avec l’assistant</button><select class="status-select" data-id="${esc(job.id)}" aria-label="Statut de candidature">${STATUS.map(st=>`<option value="${esc(st)}" ${job.status===st?'selected':''}>${esc(statusName(st))}</option>`).join('')}</select></div>
     <div class="progress-line space-top"><span class="tag ${cvReady?'good':'warn'}">${icon(cvReady?'check':'clock','s')} CV ${cvReady?'rédigé':'à préparer'}</span><span class="tag ${letterReady?'good':'warn'}">${icon(letterReady?'check':'clock','s')} Lettre ${letterReady?'rédigée':'à préparer'}</span><span class="tag ${mask(job.status)}">${esc(statusName(job.status))}</span></div>
     <div class="rule"></div><h3>Pourquoi cette offre ?</h3><div class="match-explanation">${(job.matchExplanations||[]).map(reason=>`<p class="note">${icon('check','s')} ${esc(reason)}</p>`).join('') || '<p class="note">Aucune justification disponible.</p>'}<p class="note">Le score est indicatif, ce n’est pas une probabilité de recrutement.</p></div><div class="rule"></div><h3>Contact RH & envoi</h3><p class="note space-top">AlterRADAR préremplit une adresse professionnelle lorsqu’elle est publiée dans le texte de l’offre. Vérifie-la avant l’envoi. Aucune adresse n’est devinée ni extraite de profils LinkedIn privés.</p>
     <form class="job-recruiter-form space-top" data-id="${esc(job.id)}"><div class="form-grid"><div class="field"><label>Nom du contact RH (facultatif)</label><input name="recruiterName" value="${esc(job.recruiterName||'')}" placeholder="Nom réel, si connu" /></div><div class="field"><label>Fonction (facultatif)</label><input name="recruiterRole" value="${esc(job.recruiterRole||'')}" placeholder="Chargé(e) de recrutement" /></div><div class="field full"><label>Profil LinkedIn public du contact (facultatif)</label><input name="recruiterLinkedin" type="url" value="${esc(job.recruiterLinkedin||'')}" placeholder="https://www.linkedin.com/in/..." /></div><div class="field full"><label>E-mail officiel de candidature (facultatif)</label><input type="email" name="applicationEmail" value="${esc(job.applicationEmail||'')}" placeholder="recrutement@entreprise.fr" /></div></div><button class="btn small space-top" type="submit">Enregistrer les coordonnées</button></form>
@@ -514,6 +514,8 @@ async function iaEnvoyer(route){
 }
 function iaRecevoir(payload){
   const {id,evenement}=payload||{};
+  const bulle=chat.messages.find(m=>m.role==='assistant'&&m.id===id);
+  if(bulle&&evenement){chatRecevoir(bulle,evenement);return;}
   const route=Object.keys(ui.ia.sorties).find(r=>ui.ia.sorties[r]?.id===id);
   if(!route||!evenement)return;
   const s=ui.ia.sorties[route];
@@ -534,6 +536,133 @@ async function iaAction(node){
   if(action==='ia-arreter'){const s=ui.ia.sorties[route];if(s?.enCours)await window.radar.iaAnnuler(s.id).catch(()=>{});return;}
   if(action==='ia-suggestion'){ui.ia.questions[route]=node.dataset.question||'';const input=document.getElementById(`ia-question-${route}`);if(input)input.value=ui.ia.questions[route];await iaEnvoyer(route);return;}
   if(action==='ia-journal'){await iaChargerEtat();}
+}
+// ----- Chatbot : disponible sur toutes les pages -----------------------------------------
+// Monté hors de #app : les re-rendus de page ne l'effacent jamais et la conversation suit
+// l'utilisateur d'une page à l'autre. Le cadre (ce qu'il accepte ou refuse) est décidé dans
+// le processus principal (lib/ia/chat.cjs), jamais ici.
+const chat={ouvert:false,conversation:'',messages:[],enCours:'',brouillon:''};
+const CHAT_PAGES_OFFRE=new Set(['jobs','documents']);
+function chatId(prefixe){return `${prefixe}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;}
+function chatOffreOuverte(){
+  if(!CHAT_PAGES_OFFRE.has(ui.page)||!ui.jobId)return null;
+  return (ui.state?.jobs||[]).find(j=>j.id===ui.jobId)||null;
+}
+/** Questions prêtes à cliquer, adaptées à ce qui est à l'écran. */
+function chatSuggestions(){
+  const offre=chatOffreOuverte();
+  if(offre)return ['Résume cette offre',`Que sait-on de ${offre.company} ?`,'Quelles compétences mettre en avant pour ce poste ?','Quelles questions d’entretien pour ce poste ?',`Où en est ma candidature chez ${offre.company} ?`];
+  const suivie=(ui.state?.jobs||[]).find(j=>j.status&&!['nouvelle','à_revoir'].includes(j.status));
+  return ['Où en sont mes candidatures ?','Combien de candidatures sont en entretien ?',suivie?`Que sait-on de ${suivie.company} ?`:'Comment trouver une alternance plus vite ?','Comment préparer un entretien technique ?','Que mettre dans un CV pour une alternance dev ?','Comment activer les alertes Telegram ?','Où sont stockées mes données ?'];
+}
+const chatBoutonQuestion=q=>`<button type="button" data-chat="suggestion" data-question="${esc(q)}">${esc(q)}</button>`;
+/** Pendant la conversation : trois questions compactes au-dessus de la saisie (à l'accueil, la liste complète). */
+function chatRaccourcisHtml(){
+  return chat.enCours||!chat.messages.length?'':chatSuggestions().slice(0,3).map(chatBoutonQuestion).join('');
+}
+function chatBulleHtml(m){
+  if(m.role==='user')return `<div class="chat-bulle moi">${esc(m.texte.length>700?`${m.texte.slice(0,700)}…`:m.texte)}</div>`;
+  const refus=m.mode?.categorie==='hors_sujet';
+  const mode=m.mode?`<span class="chat-mode ${refus?'refus':''}">${icon(refus?'shield':'sparkles','s')}${esc(m.mode.libelle)}${m.offre?` · ${esc(m.offre)}`:''}</span>`:'';
+  const sources=m.sources?.length?`<div class="chat-sources">${m.sources.map(s=>`<span>${esc(s.titre)} <b>${Number(s.score).toFixed(2)}</b></span>`).join('')}</div>`:'';
+  const texte=m.texte||(m.enCours?'…':'');
+  const usage=m.usage?`<div class="chat-usage">${nfmt(m.usage.entree)} tokens en entrée · ${nfmt(m.usage.sortie)} en sortie · ${nfmt(m.usage.ms)} ms</div>`:'';
+  return `<div class="chat-bulle ia ${refus?'refus':''}">${mode}${sources}${texte?`<div class="chat-texte ${m.enCours?'ia-curseur':''}">${esc(texte)}</div>`:''}${m.erreur?`<div class="chat-erreur" role="alert">${esc(m.erreur)}</div>`:''}${usage}</div>`;
+}
+function chatAccueilHtml(){
+  return `<div class="chat-accueil"><p>Je réponds sur l’alternance, les stages, la recherche d’emploi, le développement, tes candidatures et l’utilisation d’AlterRADAR. Je peux aussi résumer une annonce.</p><p class="note">Je refuse tout le reste. Pour une entreprise, je m’appuie seulement sur ses annonces enregistrées, sans accès au web. Tout tourne sur ton ordinateur, avec Ollama.</p><div class="chat-suggestions">${chatSuggestions().map(chatBoutonQuestion).join('')}</div></div>`;
+}
+function chatContexteHtml(){
+  const offre=chatOffreOuverte();
+  return offre?`${icon('file','s')}<span>Offre ouverte : ${esc(`${offre.title} — ${offre.company}`)}</span>`:'';
+}
+function chatHtml(){
+  if(!chat.ouvert)return `<button type="button" class="chat-fab" data-chat="ouvrir" aria-label="Ouvrir l’assistant AlterRADAR" title="Assistant AlterRADAR">${icon('sparkles','l')}</button>`;
+  const bouton=chat.enCours?`<button type="button" class="btn small chat-stop" data-chat="arreter">Arrêter</button>`:`<button type="submit" class="btn primary" aria-label="Envoyer">${icon('send','s')}</button>`;
+  return `<section class="chat-panel" role="dialog" aria-label="Assistant AlterRADAR"><header class="chat-header"><span class="chat-avatar">${icon('sparkles')}</span><div><strong>Assistant AlterRADAR</strong><small>Alternance, dev, candidatures, aide de l’app</small></div><button type="button" class="icon-button" data-chat="nouveau" title="Nouvelle conversation" aria-label="Nouvelle conversation">${icon('refresh')}</button><button type="button" class="icon-button" data-chat="fermer" title="Fermer (Échap)" aria-label="Fermer l’assistant">${icon('x')}</button></header>
+    <div class="chat-messages" id="chat-messages" aria-live="polite">${chat.messages.length?chat.messages.map(chatBulleHtml).join(''):chatAccueilHtml()}</div>
+    <div class="chat-contexte" id="chat-contexte">${chatContexteHtml()}</div>
+    <div class="chat-raccourcis" id="chat-raccourcis" aria-label="Questions suggérées">${chatRaccourcisHtml()}</div>
+    <form class="chat-form" id="chat-form"><textarea id="chat-saisie" rows="2" maxlength="20000" placeholder="Pose ta question ou colle une annonce…" aria-label="Message">${esc(chat.brouillon)}</textarea>${bouton}</form></section>`;
+}
+function chatRacine(){
+  let racine=document.getElementById('chat-root');
+  if(!racine){racine=document.createElement('div');racine.id='chat-root';document.body.appendChild(racine);chatEcouter(racine);}
+  return racine;
+}
+/** complet=false : seuls les messages sont redessinés (pendant le streaming), la saisie garde son focus. */
+function chatPeindre(complet=true){
+  const racine=chatRacine();
+  const liste=document.getElementById('chat-messages');
+  if(!complet&&liste){liste.innerHTML=chat.messages.length?chat.messages.map(chatBulleHtml).join(''):chatAccueilHtml();liste.scrollTop=liste.scrollHeight;return;}
+  racine.innerHTML=chatHtml();
+  // Sur grand écran, le panneau se range à droite et la page se rétrécit au lieu d'être masquée.
+  document.body.classList.toggle('chat-ouvert',chat.ouvert);
+  const nouvelleListe=document.getElementById('chat-messages');
+  if(nouvelleListe)nouvelleListe.scrollTop=nouvelleListe.scrollHeight;
+  if(chat.ouvert)document.getElementById('chat-saisie')?.focus();
+}
+/** Appelé à chaque rendu de page : l'offre ouverte change quand on navigue. */
+function chatMajContexte(){
+  if(!chat.ouvert)return;
+  const zone=document.getElementById('chat-contexte');if(zone)zone.innerHTML=chatContexteHtml();
+  const raccourcis=document.getElementById('chat-raccourcis');if(raccourcis)raccourcis.innerHTML=chatRaccourcisHtml();
+  if(!chat.messages.length){const liste=document.getElementById('chat-messages');if(liste)liste.innerHTML=chatAccueilHtml();}
+}
+async function chatEnvoyer(texte){
+  const message=String(texte||'').trim();
+  if(!message||chat.enCours)return;
+  if(!chat.conversation)chat.conversation=chatId('conv');
+  const offre=chatOffreOuverte();
+  const reponse={role:'assistant',id:chatId('chat'),texte:'',mode:null,offre:'',sources:null,usage:null,erreur:'',enCours:true};
+  chat.messages.push({role:'user',texte:message},reponse);
+  chat.enCours=reponse.id;chat.brouillon='';chat.ouvert=true;
+  chatPeindre(true);
+  // L'interface envoie le message et, au plus, l'identifiant de l'offre ouverte. Jamais de prompt.
+  let resultat;
+  try{resultat=await window.radar.iaLancer(reponse.id,'chat',{message,conversation:chat.conversation,contexte:offre?{offreId:offre.id}:{}});}
+  catch(error){resultat={ok:false,message:error?.message||'Demande impossible.'};}
+  if(!resultat?.ok&&chat.enCours===reponse.id){
+    Object.assign(reponse,{enCours:false,erreur:`${resultat?.message||'Demande impossible.'}${resultat?.code?` (${resultat.code})`:''}`});
+    chat.enCours='';chatPeindre(true);
+  }
+}
+function chatRecevoir(m,evenement){
+  if(typeof evenement.delta==='string'){m.texte+=evenement.delta;chatPeindre(false);return;}
+  if(evenement.mode)m.mode=evenement.mode;
+  if(evenement.offre)m.offre=String(evenement.offre);
+  if(Array.isArray(evenement.sources))m.sources=evenement.sources;
+  if(evenement.done)m.usage=evenement.usage||null;
+  if(evenement.erreur)m.erreur=String(evenement.erreur);
+  if(evenement.termine){
+    m.enCours=false;if(chat.enCours===m.id)chat.enCours='';
+    chatPeindre(true);
+    if(ui.page==='assistant')iaRafraichirJournal();
+    return;
+  }
+  chatPeindre(false);
+}
+function chatEcouter(racine){
+  racine.addEventListener('click',async event=>{
+    const cible=event.target.closest('[data-chat]');if(!cible)return;
+    const action=cible.dataset.chat;
+    if(action==='ouvrir'){chat.ouvert=true;chatPeindre(true);}
+    else if(action==='fermer'){chat.ouvert=false;chatPeindre(true);}
+    else if(action==='arreter'){if(chat.enCours)await window.radar.iaAnnuler(chat.enCours).catch(()=>{});}
+    else if(action==='nouveau'){
+      if(chat.enCours)await window.radar.iaAnnuler(chat.enCours).catch(()=>{});
+      if(chat.conversation)window.radar.iaOublier?.(chat.conversation)?.catch?.(()=>{});
+      Object.assign(chat,{conversation:'',messages:[],enCours:'',brouillon:''});
+      chatPeindre(true);
+    }
+    else if(action==='suggestion')await chatEnvoyer(cible.dataset.question);
+  });
+  racine.addEventListener('submit',event=>{event.preventDefault();chatEnvoyer(document.getElementById('chat-saisie')?.value);});
+  racine.addEventListener('input',event=>{if(event.target.id==='chat-saisie')chat.brouillon=event.target.value;});
+  racine.addEventListener('keydown',event=>{
+    if(event.target.id==='chat-saisie'&&event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();chatEnvoyer(event.target.value);}
+    else if(event.key==='Escape'){chat.ouvert=false;chatPeindre(true);}
+  });
 }
 function applyAppearance(){
   const settings=ui.state?.settings||{};
@@ -566,6 +695,7 @@ function render(){
   if(ui.page==='rules')appEl.querySelectorAll('.rule-edit-form select[name="field"], #new-rule-form select[name="field"]').forEach(syncRuleMatchUI);
   ui.lastRenderedPage=ui.page;
   drawToast();
+  chatMajContexte();
 }
 function distanceFingerprint(){return JSON.stringify({jobs:(ui.state?.jobs||[]).map(j=>j.id),zones:ui.state?.settings?.searchZones||[],location:ui.state?.profile?.location||''});}
 async function loadState({skipUnchanged=false}={}){
@@ -608,7 +738,8 @@ appEl.addEventListener('click',async(event)=>{
     if(!ui.modelProgress?.active){ui.modelProgress=null;paintModelPull();}
     return;
   }
-  if(node.dataset.action?.startsWith('ia-')){await iaAction(node);return;} // l'assistant IA a son propre état « en cours »
+  if(node.dataset.action?.startsWith('ia-')){await iaAction(node);return;}
+  if(node.dataset.action==='chat-resumer'){ui.jobId=node.dataset.id||ui.jobId;chat.ouvert=true;await chatEnvoyer('Résume cette offre');return;} // l'assistant IA a son propre état « en cours »
   if(ui.busy)return; // Les actions sont verrouillées, mais la navigation reste disponible.
   const id=node.dataset.id,kind=node.dataset.kind,action=node.dataset.action;
   if(action==='theme'){const theme=document.body.dataset.theme==='dark'?'light':'dark';await perform(()=>window.radar.saveSettings({theme}));return;}
@@ -839,6 +970,7 @@ async function initialize(){
     if(window.radar.platform)document.documentElement.dataset.platform=window.radar.platform;
     window.radar.onModelPull(info=>{ui.modelProgress=info;paintModelPull();});
     window.radar.onIaEvenement?.(iaRecevoir);
+    chatPeindre(true);
     const [state,system,models,modelCatalog,wallpaperData,pullStatus] = await Promise.all([window.radar.state(),window.radar.system(),window.radar.models(),window.radar.qwenCatalog?.()||Promise.resolve([]),window.radar.wallpaperGet?.()||Promise.resolve(''),window.radar.modelPullStatus?.()||Promise.resolve(null)]);
     ui.modelCatalog=modelCatalog;ui.wallpaperData=wallpaperData||'';ui.modelProgress=pullStatus||ui.modelProgress;
     ui.state=state;ui.system=system;ui.models=models;

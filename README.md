@@ -36,7 +36,7 @@ Tout reste sur ton ordinateur. Il n’y a pas de compte à créer, pas de serveu
 | **Documents adaptés** | CV et lettre ciblés sur une page A4, export DOCX et PDF lisibles par les ATS. Toujours à relire avant envoi. |
 | **Suivi des candidatures** | Statuts, historique et documents associés à chaque offre. |
 | **IA locale Qwen / Ollama** | Choix d’un modèle adapté à la mémoire de ton ordinateur. Aucun téléchargement sans ton accord. |
-| **Assistant IA** | Résume une annonce en direct, répond sur l’état de tes candidatures (le modèle consulte tes données via un outil) et sur l’utilisation d’AlterRADAR en citant la documentation. Refuse de répondre hors sujet. |
+| **Assistant IA** | Chatbot ouvert depuis toutes les pages, avec des questions prêtes à cliquer. Il résume l’offre ouverte, dit ce qu’AlterRADAR sait d’une entreprise, répond sur tes candidatures (via un outil), sur l’alternance et le développement, et sur l’utilisation de l’application en citant la documentation. Tout le reste est refusé. |
 | **Telegram (facultatif)** | Alertes et validation des dossiers depuis ton téléphone, via ton propre bot. |
 | **Surveillance en arrière-plan** | Nouvelle recherche toutes les 5 minutes depuis la zone de notification (Windows) ou la barre des menus (macOS). |
 | **Apparence** | Thème clair Pure White, thème sombre Twilight Purple, verre dépoli, fonds d’écran locaux. |
