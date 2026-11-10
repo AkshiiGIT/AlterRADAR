@@ -1,0 +1,48 @@
+{
+  "_lisez_moi": "Jeu de données FICTIF, au format de radar-data.json (jobs + outputs). Sert au serveur HTTP et aux tests quand ALTERRADAR_DONNEES n'est pas défini.",
+  "jobs": [
+    {
+      "id": "demo00000000000000001", "title": "Alternance développeur web React", "company": "Studio Lumen",
+      "location": "Lyon (69)", "status": "entretien",
+      "history": [
+        {"at": "2026-11-04T09:12:00.000Z", "event": "Entretien planifié", "detail": "Entretien technique le 13 novembre à 10 h."},
+        {"at": "2026-10-28T16:40:00.000Z", "event": "Candidature envoyée", "detail": "CV et lettre envoyés."}
+      ]
+    },
+    {
+      "id": "demo00000000000000002", "title": "Alternance développeur back-end Node.js", "company": "Nexa Santé",
+      "location": "Paris (75)", "status": "en_attente_reponse",
+      "history": [{"at": "2026-11-02T11:05:00.000Z", "event": "Candidature envoyée", "detail": "Envoi SMTP accepté par le serveur."}]
+    },
+    {
+      "id": "demo00000000000000003", "title": "Stage développeur mobile Flutter", "company": "Brisk Mobility",
+      "location": "Nantes (44)", "status": "refusée",
+      "history": [{"at": "2026-10-30T08:20:00.000Z", "event": "Réponse reçue", "detail": "Refus : profil plus avancé recherché."}]
+    },
+    {
+      "id": "demo00000000000000004", "title": "Alternance data analyst", "company": "Orbe Énergie",
+      "location": "Lyon (69)", "status": "dossier_prêt",
+      "history": [{"at": "2026-11-06T14:00:00.000Z", "event": "Dossier prêt", "detail": "CV et lettre préparés avec le modèle local."}]
+    },
+    {
+      "id": "demo00000000000000005", "title": "Alternance DevOps", "company": "Cloudrive",
+      "location": "Télétravail", "status": "postulée",
+      "history": [{"at": "2026-11-05T10:30:00.000Z", "event": "Candidature déposée", "detail": "Formulaire du site carrière rempli à la main."}]
+    },
+    {
+      "id": "demo00000000000000006", "title": "Alternance développeur full-stack PHP", "company": "Atelier Kobalt",
+      "location": "Bordeaux (33)", "status": "nouvelle", "history": []
+    },
+    {
+      "id": "demo00000000000000007", "title": "Alternance chef de projet web", "company": "Maison Verlaine",
+      "location": "Paris (75)", "status": "à_revoir",
+      "history": [{"at": "2026-11-07T17:45:00.000Z", "event": "Validation invalidée", "detail": "Document modifié après la demande de validation."}]
+    }
+  ],
+  "outputs": {
+    "demo00000000000000001": {"cv": "CV adapté (démo)", "letter": "Lettre adaptée (démo)"},
+    "demo00000000000000002": {"cv": "CV adapté (démo)", "letter": "Lettre adaptée (démo)"},
+    "demo00000000000000004": {"cv": "CV adapté (démo)", "letter": "Lettre adaptée (démo)"},
+    "demo00000000000000007": {"cv": "CV adapté (démo)"}
+  }
+}

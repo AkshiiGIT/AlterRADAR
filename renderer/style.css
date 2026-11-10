@@ -745,3 +745,31 @@ body[data-reduce-effects="true"] .model-pull-fill{transition:none}
 body[data-reduce-effects="true"] .model-pull-track.is-indeterminate::after{animation:none;transform:none;left:15%;width:40%}
 @media(prefers-reduced-motion:reduce){.model-pull-fill{transition:none}.model-pull-track.is-indeterminate::after{animation:none;transform:none;left:15%;width:40%}}
 @media(max-width:600px){.model-pull-dock{right:12px;bottom:75px;width:calc(100vw - 24px)}.model-pull-panel{padding:14px}}
+
+/* ----- Assistant IA (résumé, suivi des candidatures, aide) ----- */
+.ia-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(280px,1fr);gap:18px;align-items:start}
+@media (max-width:1100px){.ia-grid{grid-template-columns:1fr}}
+.ia-etat{gap:7px}
+.ia-etat .tag .loader{width:10px;height:10px}
+.ia-row{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.ia-suggestions{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.ia-suggestions .filter-tab{text-align:left}
+.ia-sortie{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.75;min-height:96px;padding:16px 17px;border:1px solid var(--border);border-radius:12px;background:var(--surface2);color:var(--text)}
+.ia-sortie.vide{color:var(--muted);font-size:12px}
+.ia-curseur::after{content:"▌";color:var(--accent);margin-left:2px;animation:ia-clignote 1s steps(2) infinite}
+@keyframes ia-clignote{50%{opacity:0}}
+body[data-reduce-effects="true"] .ia-curseur::after{animation:none}
+.ia-sources{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-bottom:12px}
+.ia-sources .overline{width:100%;text-transform:uppercase;letter-spacing:.05em;font-size:10px}
+.ia-source{display:inline-flex;align-items:center;gap:7px;padding:5px 10px;border-radius:999px;border:1px solid var(--border);background:var(--tint);font-size:11px;color:var(--soft)}
+.ia-source b{color:var(--accent);font-weight:720}
+.ia-usage{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;font-size:11px;color:var(--muted)}
+.ia-usage b{color:var(--text);font-weight:700}
+.ia-journal-wrap{overflow-x:auto}
+.ia-journal{width:100%;border-collapse:collapse;font-size:11px;color:var(--soft)}
+.ia-journal th{text-align:left;font-weight:680;color:var(--muted);padding:0 8px 8px 0;border-bottom:1px solid var(--border);white-space:nowrap}
+.ia-journal td{padding:8px 8px 8px 0;border-bottom:1px solid var(--border);vertical-align:top}
+.ia-journal td:nth-child(n+4):nth-child(-n+6){font-variant-numeric:tabular-nums;white-space:nowrap}
+.ia-journal td.ia-echec{color:var(--warning)}
+.ia-journal-card .card-header{flex-wrap:nowrap;align-items:flex-start}
+.ia-journal-card .card-header .icon-button{flex-shrink:0}

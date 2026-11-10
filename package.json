@@ -30,7 +30,9 @@
     "smoke:deps": "node scripts/smoke-dependencies.cjs",
     "diagnose:sources": "node scripts/diagnose-sources.cjs",
     "diagnose:dates": "node scripts/diagnose-dates.cjs",
-    "self-test": "electron . --self-test"
+    "self-test": "electron . --self-test",
+    "ia:serveur": "node serveur-ia/serveur.cjs",
+    "ia:chercher": "node serveur-ia/chercher.cjs"
   },
   "dependencies": {
     "docx": "9.11.0",
@@ -52,7 +54,11 @@
       "lib/**/*",
       "assets/**/*",
       "config/**/*",
-      "package.json"
+      "package.json",
+      "README.md",
+      "INSTALLATION.md",
+      "docs/*.md",
+      "!docs/PUBLICATION_GITHUB.md"
     ],
     "directories": {
       "output": "release"

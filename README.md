@@ -36,6 +36,7 @@ Tout reste sur ton ordinateur. Il n’y a pas de compte à créer, pas de serveu
 | **Documents adaptés** | CV et lettre ciblés sur une page A4, export DOCX et PDF lisibles par les ATS. Toujours à relire avant envoi. |
 | **Suivi des candidatures** | Statuts, historique et documents associés à chaque offre. |
 | **IA locale Qwen / Ollama** | Choix d’un modèle adapté à la mémoire de ton ordinateur. Aucun téléchargement sans ton accord. |
+| **Assistant IA** | Résume une annonce en direct, répond sur l’état de tes candidatures (le modèle consulte tes données via un outil) et sur l’utilisation d’AlterRADAR en citant la documentation. Refuse de répondre hors sujet. |
 | **Telegram (facultatif)** | Alertes et validation des dossiers depuis ton téléphone, via ton propre bot. |
 | **Surveillance en arrière-plan** | Nouvelle recherche toutes les 5 minutes depuis la zone de notification (Windows) ou la barre des menus (macOS). |
 | **Apparence** | Thème clair Pure White, thème sombre Twilight Purple, verre dépoli, fonds d’écran locaux. |
@@ -112,6 +113,8 @@ Sans terminal, double-clique sur `Lancer-AlterRADAR.bat` (Windows) ou `Lancer-Al
 npm test             # tests unitaires
 npm run smoke:deps   # génération réelle DOCX, PDF et e-mail
 npm run self-test    # lance Electron sans fenêtre et vérifie documents, PDF et interface
+npm run ia:serveur   # assistant IA exposé en HTTP (port 3000), voir serveur-ia/README.md
+npm run ia:chercher -- "ta question"   # tester la recherche dans la documentation, sans modèle
 npm run dist:win     # installateurs Windows (sur Windows)
 npm run dist:mac     # .dmg et .zip macOS (sur un Mac)
 ```

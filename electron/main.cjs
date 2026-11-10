@@ -29,6 +29,9 @@ const {suggestedJobs,analyzeMatch,careerFit}=require('../lib/matching.cjs');
 const {normalizeTypes,classifyJob,eligibleContract,contractLabel}=require('../lib/contracts.cjs');
 const OLLAMA_BASE = 'http://127.0.0.1:11434';
 const {recommendedDownload, parsePullUpdate, createPullTracker, explainOllamaError, QWEN_CATALOG, allowedModel} = require('../lib/ollama.cjs');
+const {creerIA, demarrer, codeErreur} = require('../lib/ia/index.cjs');
+const {depuisEtatAlterRadar} = require('../lib/ia/assistant.cjs');
+const MODELE_EMBED = 'paraphrase-multilingual';
 const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024;
 const APP_ID = 'fr.alterradar.desktop';
 // `--self-test[=rapport.json]` : vérification non interactive d'un build (CI Windows/macOS).
@@ -151,6 +154,65 @@ async function ollamaRequest(endpoint, options = {}, ms = 8000) {
   try { return await result.json(); }
   catch { throw new Error('Ollama a renvoyé une réponse illisible. Réessaie ou redémarre Ollama.'); }
 }
+// ----- Assistant IA : résumé d'annonce, suivi des candidatures (appel d'outil), aide (RAG) -----
+// Même cœur que serveur-ia/serveur.cjs. L'interface ne parle jamais à Ollama : elle envoie
+// une demande ici, le processus principal valide, assemble le prompt, appelle le modèle
+// avec un timeout, journalise, et renvoie les évènements un par un (IPC au lieu de SSE).
+let assistantIA=null;
+const fluxIA=new Map(); // identifiant du flux → AbortController
+function iaLocale(){
+  return assistantIA ||= creerIA({
+    base:OLLAMA_BASE,
+    modele:()=>state.settings.selectedModel,
+    modeleEmbed:MODELE_EMBED,
+    candidatures:()=>depuisEtatAlterRadar(state),
+    racine:path.join(__dirname,'..')
+  });
+}
+const MESSAGES_ENTREE={'texte invalide':'Colle le texte d’une annonce (20 000 caractères maximum).','ton invalide':'Ton inconnu : choisis neutre ou direct.','question invalide':'Pose une question (1 000 caractères maximum).','route inconnue':'Fonction inconnue.'};
+function messageIA(error){
+  if(error?.name==='RequeteInvalide')return MESSAGES_ENTREE[error.message]||'Demande invalide.';
+  if(error?.name==='ModeleIndisponible'){
+    if(!state.settings.selectedModel)return 'Choisis un modèle Ollama dans Paramètres.';
+    if(/délai/.test(error.message))return 'Ollama met trop de temps à répondre. Ferme les applications lourdes ou choisis un modèle plus petit.';
+    return explainOllamaError(null,error.status,error.message);
+  }
+  return 'Erreur interne de l’assistant.';
+}
+async function lancerFluxIA(sender,id,route,corps){
+  if(!/^[A-Za-z0-9-]{8,64}$/.test(String(id||'')))return {ok:false,code:400,message:'Identifiant de demande invalide.'};
+  if(fluxIA.has(id))return {ok:false,code:409,message:'Demande déjà en cours.'};
+  if(fluxIA.size>=3)return {ok:false,code:429,message:'Trois réponses sont déjà en cours. Attends qu’une se termine.'};
+  const annulation=new AbortController();
+  fluxIA.set(id,annulation);
+  // Le premier évènement est attendu AVANT de répondre « ok » : une entrée invalide
+  // ou un Ollama éteint reviennent comme une erreur propre (400 / 503), pas en plein flux.
+  let flux;
+  try{flux=await demarrer(iaLocale().lancer(route,corps,{signal:annulation.signal}));}
+  catch(error){fluxIA.delete(id);return {ok:false,...codeErreur(error),message:messageIA(error)};}
+  const envoyer=evenement=>{if(!sender.isDestroyed())sender.send('ia:evenement',{id,evenement});};
+  (async()=>{
+    try{
+      if(flux.premier)envoyer(flux.premier);
+      for await(const evenement of flux.suite)envoyer(evenement);
+    }catch(error){envoyer({erreur:annulation.signal.aborted?'Réponse interrompue.':messageIA(error)});}
+    finally{fluxIA.delete(id);envoyer({termine:true});}
+  })();
+  return {ok:true,id};
+}
+async function etatIA(){
+  const check=await installedModels();
+  const noms=check.models.map(m=>m.name);
+  return {
+    connecte:check.connected,
+    modele:state.settings.selectedModel||'',
+    modeleInstalle:noms.includes(state.settings.selectedModel),
+    modeleEmbed:MODELE_EMBED,
+    embedInstalle:noms.some(n=>n===MODELE_EMBED||n.startsWith(MODELE_EMBED+':')),
+    morceaux:iaLocale().index().morceaux.length
+  };
+}
+
 let modelPulling=false;
 let modelPullController=null;
 let modelPullStatus=null; // In-memory only: no private data written to the profile.
@@ -1098,6 +1160,10 @@ function registerIpc() {
     persist(); return snapshot();
   });
   ipcMain.handle('app:export', (_e, jobIdValue, kind, format) => exportGenerated(jobIdValue, kind, format));
+  ipcMain.handle('ia:lancer', (event, id, route, corps) => lancerFluxIA(event.sender, id, route, corps));
+  ipcMain.handle('ia:annuler', (_e, id) => { const flux = fluxIA.get(String(id || '')); if (flux) flux.abort(); return Boolean(flux); });
+  ipcMain.handle('ia:journal', () => iaLocale().journal.lister());
+  ipcMain.handle('ia:etat', () => etatIA());
 }
 function windowBackground(){
   const dark=state?.settings.theme==='dark'||(state?.settings.theme==='system'&&nativeTheme.shouldUseDarkColors);
@@ -1185,6 +1251,12 @@ async function runSelfTest(){
     return image.getSize();
   });
   await check('safe-storage',async()=>({available:safeStorage.isEncryptionAvailable()}));
+  // La documentation sert de corpus à l'assistant : elle doit être présente dans le build.
+  await check('ia-corpus',async()=>{
+    const morceaux=iaLocale().index().morceaux.length;
+    if(morceaux<10)throw new Error(`documentation de l’assistant introuvable (${morceaux} morceaux)`);
+    return `${morceaux} morceaux`;
+  });
   await check('renderer',async()=>{
     const win=new BrowserWindow({show:false,width:1280,height:800,webPreferences:secureWebPreferences()});
     const problems=[];

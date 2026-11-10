@@ -57,5 +57,16 @@ contextBridge.exposeInMainWorld('radar', Object.freeze({
   saveGenerated: (id,kind,text) => ipcRenderer.invoke('app:generated-save',id,kind,text),
   exportGenerated: (id,kind,format) => ipcRenderer.invoke('app:export',id,kind,format),
   openUrl: url => ipcRenderer.invoke('app:open-url',url),
-  openOllama: () => ipcRenderer.invoke('app:open-ollama')
+  openOllama: () => ipcRenderer.invoke('app:open-ollama'),
+  // Assistant IA : l'interface envoie une demande, le processus principal parle au modèle.
+  iaLancer: (id,route,corps) => ipcRenderer.invoke('ia:lancer',id,route,corps),
+  iaAnnuler: id => ipcRenderer.invoke('ia:annuler',id),
+  iaJournal: () => ipcRenderer.invoke('ia:journal'),
+  iaEtat: () => ipcRenderer.invoke('ia:etat'),
+  onIaEvenement: listener => {
+    if(typeof listener !== 'function')return ()=>{};
+    const handler=(_event,payload)=>listener(payload);
+    ipcRenderer.on('ia:evenement',handler);
+    return ()=>ipcRenderer.removeListener('ia:evenement',handler);
+  }
 }));

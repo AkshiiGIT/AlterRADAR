@@ -4,6 +4,7 @@ const nav = [
   ['jobs','Offres & stages','briefcase'],
   ['documents','Mes documents','file'],
   ['applications','Candidatures','send'],
+  ['assistant','Assistant IA','sparkles'],
   ['rules','Règles de tri','filter'],
   ['monitor','Surveillance & Telegram','clock'],
   ['settings','Paramètres','settings']
@@ -166,9 +167,9 @@ function sidebar(){
     <div class="brand"><span class="brand-mark">${icon('radar')}</span><span>Alter<span style="color:var(--accent)">RADAR</span></span></div>
     ${!ui.state.settings.onboardingCompleted?`<button class="nav-item ${ui.page==='onboarding'?'active':''}" data-nav="onboarding" title="Créer mon profil" aria-label="Créer mon profil" style="margin-bottom:9px">${icon('sparkles')}<span>Créer mon profil</span></button>`:''}
     <div class="nav-label">ESPACE DE TRAVAIL</div>
-    <div class="nav-group">${nav.slice(0,6).map(([id,title,glyph])=>`<button class="nav-item ${ui.page===id?'active':''}" data-nav="${id}" title="${esc(title)}" aria-label="${esc(title)}">${icon(glyph)}<span>${title}</span>${id==='jobs'?`<span class="nav-count" title="${compatible} offre(s) compatible(s) affichée(s)">${compatible}</span>`:''}</button>`).join('')}</div>
+    <div class="nav-group">${nav.slice(0,7).map(([id,title,glyph])=>`<button class="nav-item ${ui.page===id?'active':''}" data-nav="${id}" title="${esc(title)}" aria-label="${esc(title)}">${icon(glyph)}<span>${title}</span>${id==='jobs'?`<span class="nav-count" title="${compatible} offre(s) compatible(s) affichée(s)">${compatible}</span>`:''}</button>`).join('')}</div>
     <div class="nav-label" style="margin-top:29px">PRÉFÉRENCES</div>
-    <div class="nav-group">${nav.slice(6).map(([id,title,glyph])=>`<button class="nav-item ${ui.page===id?'active':''}" data-nav="${id}" title="${esc(title)}" aria-label="${esc(title)}">${icon(glyph)}<span>${title}</span></button>`).join('')}</div>
+    <div class="nav-group">${nav.slice(7).map(([id,title,glyph])=>`<button class="nav-item ${ui.page===id?'active':''}" data-nav="${id}" title="${esc(title)}" aria-label="${esc(title)}">${icon(glyph)}<span>${title}</span></button>`).join('')}</div>
     <div class="sidebar-bottom"><div class="privacy-pill">${icon('shield')}<div><strong>Données privées</strong><br>Local, sauf envois autorisés.</div></div>
     <button class="side-profile" data-nav="documents" title="Mes documents" aria-label="Mes documents" style="width:100%;text-align:left;cursor:pointer"><span class="avatar">${esc(initials(profile.name))}</span><span><strong>${esc(profile.name||'Mon espace')}</strong><small>Compte local · ${ui.system?.platform==='darwin'?'macOS':ui.system?.platform==='win32'?'Windows':'Desktop'}</small></span>${icon('chevron','s')}</button></div>
   </aside>`;
@@ -403,6 +404,137 @@ function settings(){
  <div class="rule"></div><h3>Contacter le créateur</h3><div class="inline-actions space-top"><button class="btn" data-action="open-repository">${icon('up-right','s')} GitHub · AkshiiGIT/AlterRADAR</button>${ui.state.creator?.linkedinUrl?`<button class="btn" data-action="open-creator-linkedin">${icon('up-right','s')} LinkedIn · Akasche MAHINTAN</button>`:`<span class="note">LinkedIn : lien du profil à compléter avant la publication.</span>`}<button class="btn" data-action="open-creator-email">${icon('send','s')} ${esc(ui.state.creator?.email||'Contacter le créateur')}</button></div>
  <p class="note space-top">© 2026 Akasche MAHINTAN · Licence MIT. Les messages Telegram ne sont pas des conversations secrètes chiffrées de bout en bout.</p></section>`;
 }
+// ----- Assistant IA ---------------------------------------------------------------------
+// L'interface n'appelle jamais Ollama : elle envoie { texte } ou { question } au processus
+// principal (window.radar.iaLancer), qui renvoie les évènements un par un :
+// { delta }, { sources }, { done, usage }, puis { termine }.
+ui.ia={onglet:'resumer',offre:'',texte:'',ton:'neutre',questions:{assistant:'',documents:''},sorties:{},etat:null,journal:[],chargeLe:0};
+const IA_ONGLETS=[['resumer','Résumer une annonce','file'],['assistant','Mes candidatures','send'],['documents','Aide AlterRADAR','info']];
+const IA_DOC_EXEMPLES=['Comment activer les alertes Telegram ?','Quelles données sortent de mon ordinateur ?','Comment installer AlterRADAR sur un Mac ?'];
+function iaExemplesCandidatures(){
+  const suivie=(ui.state?.jobs||[]).find(j=>j.status&&j.status!=='nouvelle')||(ui.state?.jobs||[])[0];
+  return [`Où en est ma candidature chez ${suivie?.company||'Studio Lumen'} ?`,'Combien de candidatures sont en entretien ?','Quelles offres sont à revoir ?'];
+}
+function iaTexteOffre(job){
+  // La description vient d'une API publique : on n'en garde que le texte (document inerte, rien n'est exécuté).
+  const description=new DOMParser().parseFromString(String(job.description||''),'text/html').body.textContent||'';
+  return `${job.title} — ${job.company}\n${job.location?`Lieu : ${job.location}\n`:''}\n${description.replace(/\n{3,}/g,'\n\n').trim()}`.slice(0,20000);
+}
+function iaEtatHtml(){
+  const e=ui.ia.etat;
+  if(!e)return `<span class="tag"><span class="loader"></span> Vérification d’Ollama…</span>`;
+  const tags=[];
+  tags.push(e.connecte?`<span class="tag good">${icon('check','s')} Ollama connecté</span>`:`<span class="tag warn">${icon('info','s')} Ollama hors ligne</span>`);
+  tags.push(e.modeleInstalle?`<span class="tag">${icon('cpu','s')} ${esc(e.modele)}</span>`:`<span class="tag warn">${icon('cpu','s')} ${e.modele?`${esc(e.modele)} non installé`:'Aucun modèle choisi'}</span>`);
+  tags.push(e.embedInstalle?`<span class="tag">${icon('search','s')} Recherche sémantique · ${esc(e.modeleEmbed)}</span>`:`<span class="tag" title="Installe ${esc(e.modeleEmbed)} pour la recherche sémantique : ollama pull ${esc(e.modeleEmbed)}">${icon('search','s')} Recherche par mots-clés (repli)</span>`);
+  tags.push(`<span class="tag">${icon('file','s')} ${nfmt(e.morceaux)} extraits de documentation</span>`);
+  return tags.join('');
+}
+function iaResultatHtml(route){
+  const s=ui.ia.sorties[route];
+  const attente=route==='resumer'?'Le résumé apparaîtra ici, fragment par fragment.':route==='assistant'?'La réponse s’appuie sur tes candidatures enregistrées dans AlterRADAR.':'La réponse cite les extraits de la documentation utilisés.';
+  if(!s)return `<div id="ia-sortie" class="ia-sortie vide" aria-live="polite">${esc(attente)}</div>`;
+  const sources=route==='documents'&&s.sources?`<div class="ia-sources"><span class="overline">Sources retenues · ${s.mode==='lexical'?'mots-clés':'sémantique'}</span>${s.sources.map(x=>`<span class="ia-source">${esc(x.titre)} <b>${Number(x.score).toFixed(2)}</b></span>`).join('')}</div>`:'';
+  const texte=s.texte||(s.enCours?'Le modèle réfléchit…':'');
+  const usage=s.usage?`<div class="ia-usage"><span>entrée <b>${nfmt(s.usage.entree)}</b> tokens</span><span>sortie <b>${nfmt(s.usage.sortie)}</b> tokens</span><span>serveur <b>${nfmt(s.usage.ms)}</b> ms</span><span>premier fragment <b>${s.premierFragment===null?'—':nfmt(Math.round(s.premierFragment))}</b> ms</span></div>`:'';
+  return `${sources}${texte||!s.erreur?`<div id="ia-sortie" class="ia-sortie ${s.texte?'':'vide'} ${s.enCours?'ia-curseur':''}" aria-live="polite">${esc(texte)}</div>`:''}${s.erreur?`<div class="alert error space-top" role="alert">${icon('info')}<span>${esc(s.erreur)}</span></div>`:''}${usage}`;
+}
+function iaActionsHtml(route){
+  const enCours=Boolean(ui.ia.sorties[route]?.enCours);
+  const libelle=route==='resumer'?'Résumer':route==='assistant'?'Demander':'Chercher';
+  return enCours?`<button class="btn small" data-action="ia-arreter" data-route="${route}">Arrêter</button><span class="overline"><span class="loader"></span> Réponse en cours</span>`:`<button class="btn primary" data-action="ia-envoyer" data-route="${route}">${icon('sparkles','s')} ${libelle}</button>`;
+}
+function iaJournalHtml(){
+  const lignes=ui.ia.journal||[];
+  if(!lignes.length)return `<p class="note">Aucun appel pour l’instant. Chaque appel au modèle sera noté ici : modèle, tokens, durée, issue.</p>`;
+  const heure=d=>{try{return new Intl.DateTimeFormat('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(d));}catch{return ''}};
+  return `<div class="ia-journal-wrap"><table class="ia-journal"><thead><tr><th>Heure</th><th>Étape</th><th>Modèle</th><th>Entrée</th><th>Sortie</th><th>ms</th><th>Issue</th></tr></thead><tbody>${lignes.slice(0,12).map(l=>`<tr><td>${esc(heure(l.le))}</td><td>${esc(l.route)}</td><td>${esc(l.modele)}</td><td>${nfmt(l.entree)}</td><td>${nfmt(l.sortie)}</td><td>${nfmt(l.ms)}</td><td class="${/^echec/.test(l.issue)?'ia-echec':''}">${esc(l.issue)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function iaFormulaireHtml(route){
+  if(route==='resumer'){
+    const offres=(ui.state.jobs||[]).filter(j=>j.description).sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,40);
+    return `<div class="field"><label for="ia-offre">Partir d’une offre enregistrée (facultatif)</label><select id="ia-offre"><option value="">— Coller un texte —</option>${offres.map(j=>`<option value="${esc(j.id)}" ${ui.ia.offre===j.id?'selected':''}>${esc(`${j.title} — ${j.company}`.slice(0,110))}</option>`).join('')}</select></div>
+      <div class="field space-top"><label for="ia-texte">Texte de l’annonce</label><textarea id="ia-texte" maxlength="20000" placeholder="Colle ici le texte d’une offre d’alternance ou de stage.">${esc(ui.ia.texte)}</textarea><small class="overline">${nfmt(ui.ia.texte.length)} / 20 000 caractères</small></div>
+      <div class="ia-row space-top"><div class="field" style="width:190px"><label for="ia-ton">Ton du résumé</label><select id="ia-ton"><option value="neutre" ${ui.ia.ton==='neutre'?'selected':''}>Neutre</option><option value="direct" ${ui.ia.ton==='direct'?'selected':''}>Direct</option></select></div><div class="inline-actions" id="ia-actions">${iaActionsHtml(route)}</div></div>`;
+  }
+  const exemples=route==='assistant'?iaExemplesCandidatures():IA_DOC_EXEMPLES;
+  return `<div class="field"><label for="ia-question-${route}">${route==='assistant'?'Question sur tes candidatures':'Question sur AlterRADAR'}</label><input id="ia-question-${route}" maxlength="1000" value="${esc(ui.ia.questions[route])}" placeholder="${esc(exemples[0])}"/></div>
+    <div class="ia-suggestions">${exemples.map(q=>`<button type="button" class="filter-tab" data-action="ia-suggestion" data-route="${route}" data-question="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+    <div class="inline-actions space-top" id="ia-actions">${iaActionsHtml(route)}</div>`;
+}
+function assistantPage(){
+  if(Date.now()-ui.ia.chargeLe>15000){ui.ia.chargeLe=Date.now();setTimeout(iaChargerEtat,0);}
+  const route=ui.ia.onglet;
+  const explication={resumer:'Le texte est validé, puis résumé par ton modèle local. La réponse s’affiche au fil de l’eau (streaming).',assistant:'Le modèle ne connaît pas tes candidatures : il demande un outil, AlterRADAR l’exécute sur tes données locales, puis le modèle rédige la réponse.',documents:'La question est comparée aux extraits de la documentation (embeddings, similarité cosinus). Seuls les 3 plus proches sont donnés au modèle, qui doit refuser si la réponse n’y est pas.'}[route];
+  return `${pageHeader('IA LOCALE · OLLAMA','Assistant IA','Résume une annonce, interroge tes candidatures ou la documentation. Tout reste sur ton ordinateur.')}
+    <div class="ia-etat inline-actions" id="ia-etat">${iaEtatHtml()}</div>
+    <div class="ia-grid space-top"><section class="card"><div class="filter-tabs" role="tablist">${IA_ONGLETS.map(([id,titre,glyph])=>`<button type="button" role="tab" aria-selected="${route===id}" class="filter-tab ${route===id?'active':''}" data-action="ia-onglet" data-onglet="${id}">${icon(glyph,'s')} ${titre}</button>`).join('')}</div>
+      <p class="note space-top">${esc(explication)}</p>
+      <div class="space-top">${iaFormulaireHtml(route)}</div>
+      <div class="space-top" id="ia-resultat">${iaResultatHtml(route)}</div></section>
+      <aside class="card ia-journal-card"><div class="card-header"><div><h3>Journal des appels</h3><p class="subtitle">Modèle, tokens, durée et issue de chaque appel. Jamais le contenu.</p></div><button class="icon-button" data-action="ia-journal" title="Actualiser le journal" aria-label="Actualiser le journal">${icon('refresh')}</button></div><div id="ia-journal">${iaJournalHtml()}</div></aside></div>`;
+}
+/** Met à jour uniquement les zones concernées : les champs en cours de saisie ne sont jamais reconstruits. */
+function iaPeindre(route,complet=true){
+  if(ui.page!=='assistant'||ui.ia.onglet!==route)return;
+  if(!complet){
+    const sortie=document.getElementById('ia-sortie');
+    if(sortie){sortie.textContent=ui.ia.sorties[route]?.texte||'';sortie.classList.remove('vide');return;}
+  }
+  const zone=document.getElementById('ia-resultat');if(zone)zone.innerHTML=iaResultatHtml(route);
+  const actions=document.getElementById('ia-actions');if(actions)actions.innerHTML=iaActionsHtml(route);
+}
+async function iaChargerEtat(){
+  try{
+    const [etat,journal]=await Promise.all([window.radar.iaEtat(),window.radar.iaJournal()]);
+    ui.ia.etat=etat;ui.ia.journal=journal;
+  }catch{ui.ia.etat={connecte:false,modele:'',modeleInstalle:false,modeleEmbed:'paraphrase-multilingual',embedInstalle:false,morceaux:0};}
+  if(ui.page!=='assistant')return;
+  const etatEl=document.getElementById('ia-etat');if(etatEl)etatEl.innerHTML=iaEtatHtml();
+  const journalEl=document.getElementById('ia-journal');if(journalEl)journalEl.innerHTML=iaJournalHtml();
+}
+async function iaRafraichirJournal(){
+  try{ui.ia.journal=await window.radar.iaJournal();}catch{return;}
+  const journalEl=document.getElementById('ia-journal');if(journalEl&&ui.page==='assistant')journalEl.innerHTML=iaJournalHtml();
+}
+async function iaEnvoyer(route){
+  if(ui.ia.sorties[route]?.enCours)return;
+  const corps=route==='resumer'?{texte:ui.ia.texte,ton:ui.ia.ton}:{question:ui.ia.questions[route]};
+  const id=`ia-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
+  ui.ia.sorties[route]={id,texte:'',sources:null,mode:'',usage:null,erreur:'',enCours:true,debut:performance.now(),premierFragment:null};
+  iaPeindre(route);
+  let reponse;
+  try{reponse=await window.radar.iaLancer(id,route,corps);}
+  catch(error){reponse={ok:false,message:error?.message||'Demande impossible.'};}
+  if(!reponse?.ok&&ui.ia.sorties[route]?.id===id){
+    // Même traduction que le contrat HTTP : 400 entrée invalide, 503 modèle indisponible.
+    Object.assign(ui.ia.sorties[route],{enCours:false,erreur:`${reponse.message||'Demande impossible.'}${reponse.code?` (${reponse.code} · ${reponse.erreur||'erreur'})`:''}`});
+    iaPeindre(route);iaRafraichirJournal();
+  }
+}
+function iaRecevoir(payload){
+  const {id,evenement}=payload||{};
+  const route=Object.keys(ui.ia.sorties).find(r=>ui.ia.sorties[r]?.id===id);
+  if(!route||!evenement)return;
+  const s=ui.ia.sorties[route];
+  if(typeof evenement.delta==='string'){
+    if(s.premierFragment===null)s.premierFragment=performance.now()-s.debut;
+    const premier=!s.texte;s.texte+=evenement.delta;iaPeindre(route,premier);return;
+  }
+  if(Array.isArray(evenement.sources)){s.sources=evenement.sources;s.mode=evenement.mode||'';}
+  if(evenement.done)s.usage=evenement.usage||null;
+  if(evenement.erreur)s.erreur=String(evenement.erreur);
+  if(evenement.termine){s.enCours=false;iaRafraichirJournal();}
+  iaPeindre(route);
+}
+async function iaAction(node){
+  const action=node.dataset.action,route=node.dataset.route;
+  if(action==='ia-onglet'){ui.ia.onglet=node.dataset.onglet;render();return;}
+  if(action==='ia-envoyer'){await iaEnvoyer(route);return;}
+  if(action==='ia-arreter'){const s=ui.ia.sorties[route];if(s?.enCours)await window.radar.iaAnnuler(s.id).catch(()=>{});return;}
+  if(action==='ia-suggestion'){ui.ia.questions[route]=node.dataset.question||'';const input=document.getElementById(`ia-question-${route}`);if(input)input.value=ui.ia.questions[route];await iaEnvoyer(route);return;}
+  if(action==='ia-journal'){await iaChargerEtat();}
+}
 function applyAppearance(){
   const settings=ui.state?.settings||{};
   document.body.dataset.appearance=settings.appearanceStyle||'solid';
@@ -423,7 +555,7 @@ function render(){
   document.body.classList.add('ar-ready');
   // Animate only an actual page change, not every in-place data update.
   document.body.dataset.viewTransition=ui.lastRenderedPage!==ui.page?'true':'false';
-  const views={onboarding,dashboard,jobs,documents,applications,rules:rulesPage,monitor:monitorPage,settings};
+  const views={onboarding,dashboard,jobs,documents,applications,assistant:assistantPage,rules:rulesPage,monitor:monitorPage,settings};
   // Keep the reader's position when an in-page action refreshes the view.
   // Navigation to another page starts from the top, as expected.
   const oldMain=appEl.querySelector('.main-area');
@@ -476,6 +608,7 @@ appEl.addEventListener('click',async(event)=>{
     if(!ui.modelProgress?.active){ui.modelProgress=null;paintModelPull();}
     return;
   }
+  if(node.dataset.action?.startsWith('ia-')){await iaAction(node);return;} // l'assistant IA a son propre état « en cours »
   if(ui.busy)return; // Les actions sont verrouillées, mais la navigation reste disponible.
   const id=node.dataset.id,kind=node.dataset.kind,action=node.dataset.action;
   if(action==='theme'){const theme=document.body.dataset.theme==='dark'?'light':'dark';await perform(()=>window.radar.saveSettings({theme}));return;}
@@ -586,6 +719,13 @@ appEl.addEventListener('click',async(event)=>{
 });
 appEl.addEventListener('change', async event=>{
   const el=event.target;
+  if(el.id==='ia-ton'){ui.ia.ton=el.value==='direct'?'direct':'neutre';return;}
+  if(el.id==='ia-offre'){
+    ui.ia.offre=el.value;
+    const job=(ui.state.jobs||[]).find(j=>j.id===el.value);
+    if(job){ui.ia.texte=iaTexteOffre(job);const zone=document.getElementById('ia-texte');if(zone){zone.value=ui.ia.texte;zone.dispatchEvent(new Event('input',{bubbles:true}));}}
+    return;
+  }
   if(el.closest('form'))ui.dirty=true;
   if(el.name==='field' && el.closest('.rule-edit-form, #new-rule-form')) {syncRuleMatchUI(el);return;}
   if(el.name==='mode' && el.closest('.rule-edit-form, #new-rule-form')) {syncRuleMatchUI(el.closest('form').querySelector('select[name="field"]'));return;}
@@ -611,6 +751,13 @@ appEl.addEventListener('change', async event=>{
   if(el.classList.contains('status-select')){await perform(()=>window.radar.setJobStatus(el.dataset.id,el.value),'Statut mis à jour.');}
 });
 appEl.addEventListener('input', event=>{
+  if(event.target.id==='ia-texte'){
+    ui.ia.texte=event.target.value;
+    const compteur=event.target.parentElement?.querySelector('.overline');
+    if(compteur)compteur.textContent=`${nfmt(ui.ia.texte.length)} / 20 000 caractères`;
+    return;
+  }
+  if(event.target.id==='ia-question-assistant'||event.target.id==='ia-question-documents'){ui.ia.questions[event.target.id.slice(12)]=event.target.value;return;}
   const geoRow=event.target.closest('.geo-zone');
   if(geoRow){
     const index=Number(geoRow.dataset.index);
@@ -691,6 +838,7 @@ async function initialize(){
     if(!window.radar)throw new Error('Application desktop requise. Lance AlterRADAR depuis son application installée.');
     if(window.radar.platform)document.documentElement.dataset.platform=window.radar.platform;
     window.radar.onModelPull(info=>{ui.modelProgress=info;paintModelPull();});
+    window.radar.onIaEvenement?.(iaRecevoir);
     const [state,system,models,modelCatalog,wallpaperData,pullStatus] = await Promise.all([window.radar.state(),window.radar.system(),window.radar.models(),window.radar.qwenCatalog?.()||Promise.resolve([]),window.radar.wallpaperGet?.()||Promise.resolve(''),window.radar.modelPullStatus?.()||Promise.resolve(null)]);
     ui.modelCatalog=modelCatalog;ui.wallpaperData=wallpaperData||'';ui.modelProgress=pullStatus||ui.modelProgress;
     ui.state=state;ui.system=system;ui.models=models;
@@ -733,3 +881,10 @@ appEl.addEventListener('pointermove',event=>{
   button.style.setProperty('--bubble-x',`${Math.round(event.clientX-bounds.left)}px`);
   button.style.setProperty('--bubble-y',`${Math.round(event.clientY-bounds.top)}px`);
 },{passive:true});
+
+// Assistant IA : Entrée envoie la question (les champs ne sont pas dans un <form>).
+appEl.addEventListener('keydown',event=>{
+  if(event.key!=='Enter'||event.isComposing)return;
+  const id=event.target?.id;
+  if(id==='ia-question-assistant'||id==='ia-question-documents'){event.preventDefault();iaEnvoyer(id.slice(12));}
+});

@@ -3,6 +3,16 @@
 Toutes les versions d’AlterRADAR, de la plus récente à la plus ancienne.
 Créé et développé par **Akasche MAHINTAN** · licence MIT.
 
+## Non publié — Assistant IA
+
+- Nouvel onglet **Assistant IA**, entièrement local avec Ollama :
+  - **Résumer une annonce** : résumé en streaming, ton neutre ou direct, à partir d’un texte collé ou d’une offre enregistrée.
+  - **Mes candidatures** : le modèle appelle des outils (`chercher_candidature`, `bilan_candidatures`) exécutés par AlterRADAR sur les données locales, puis rédige la réponse. Le contenu des CV et lettres n’est jamais transmis au modèle.
+  - **Aide AlterRADAR** : recherche dans la documentation (embeddings `paraphrase-multilingual`, similarité cosinus), réponse limitée aux extraits cités, refus quand la documentation ne contient pas la réponse. Repli automatique sur une recherche par mots-clés si le modèle d’embedding est absent.
+  - Journal des appels (modèle, tokens, durée, issue, jamais le contenu), timeout explicite, erreurs Ollama traduites en messages clairs.
+- `npm run ia:serveur` : les trois fonctions exposées en HTTP (SSE), conformes au contrat de route du cours « Les Fondamentaux de l’IA » (ESGI 3IW).
+- L’autotest vérifie que la documentation lue par l’assistant est bien embarquée dans l’application.
+
 ## v0.14.0 — Première version publique
 
 ### Windows et macOS
