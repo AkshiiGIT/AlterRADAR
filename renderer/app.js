@@ -418,7 +418,7 @@ function settings(){
       <p class="note space-top">L'image est enregistrée dans les données locales d'AlterRADAR, jamais dans le dépôt Git ni sur un serveur. L'effet reste facultatif pour privilégier la lisibilité.</p>
     </section>
     <section class="card space-top about-alterradar"><div class="card-header"><h3>À propos d’AlterRADAR</h3>${icon('info')}</div>
- <p class="lead"><strong>AlterRADAR</strong> · Version ${esc(ui.state.version||'0.14.0')} · Application gratuite et open source pour Windows et macOS.</p>
+ <p class="lead"><strong>AlterRADAR</strong> · Version ${esc(ui.state.version||'0.15.0')} · Application gratuite et open source pour Windows et macOS.</p>
  <p class="creator-about">Créé et développé par <strong>Akasche MAHINTAN</strong>.</p>
  <div class="about-points space-top"><div class="about-point"><strong>${icon('shield','s')} Tes données restent sur ton ordinateur par défaut.</strong><p>Ton profil, tes documents, tes règles de tri, tes candidatures et ton historique sont conservés localement. Les modèles Ollama génèrent tes documents sur ton propre PC. AlterRADAR ne possède pas de serveur central de comptes, de CV ou de télémétrie.</p></div>
  <div class="about-point"><strong>${icon('user','s')} Le créateur n’a pas accès à tes données personnelles.</strong><p>Akasche MAHINTAN ne reçoit pas les fichiers enregistrés sur ton appareil et ne peut pas consulter ton dossier depuis AlterRADAR. Attention : tes fichiers locaux ne sont pas chiffrés au repos ; protège ta session.</p></div>

@@ -1,7 +1,7 @@
 {
   "name": "alterradar-desktop",
   "productName": "AlterRADAR",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "AlterRADAR : recherche locale de stages et alternances, matching de CV, IA Ollama et validation Telegram",
   "private": true,
   "main": "electron/main.cjs",

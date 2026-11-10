@@ -3,7 +3,7 @@
 Toutes les versions d’AlterRADAR, de la plus récente à la plus ancienne.
 Créé et développé par **Akasche MAHINTAN** · licence MIT.
 
-## Non publié — Assistant IA
+## v0.15.0 — Assistant IA, chatbot et dates de publication
 
 - Nouvel onglet **Assistant IA**, entièrement local avec Ollama :
   - **Résumer une annonce** : résumé en streaming, ton neutre ou direct, à partir d’un texte collé ou d’une offre enregistrée.
