@@ -884,6 +884,9 @@ async function afficherPagePourDate(url,{delaiMs=15000}={}){
   const fenetre=new BrowserWindow({show:false,width:1280,height:900,webPreferences:{session:sessionDates(),sandbox:true,contextIsolation:true,nodeIntegration:false,images:false,webgl:false,spellcheck:false,backgroundThrottling:false,autoplayPolicy:'user-gesture-required'}});
   const contenu=fenetre.webContents;const id=contenu.id;
   contenu.setAudioMuted(true);
+  // WebRTC ouvre ses propres sockets UDP (serveurs STUN de Google, Cloudflare…) sans passer par
+  // webRequest : on lui interdit tout UDP direct, la page ne contacte donc aucun serveur tiers.
+  contenu.setWebRTCIPHandlingPolicy('disable_non_proxied_udp');
   contenu.setWindowOpenHandler(()=>({action:'deny'}));
   contenu.on('will-attach-webview',evenement=>evenement.preventDefault());
   let minuterie;

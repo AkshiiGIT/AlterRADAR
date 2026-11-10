@@ -16,7 +16,7 @@ Créé et développé par **Akasche MAHINTAN** · licence MIT.
   - Mémoire des 3 derniers échanges, gardée dans le processus principal.
 - Dates de publication beaucoup plus souvent vérifiées :
   - les liens de redirection d’agrégateur (`r.holeest.com`, 39 % de la liste communautaire) mènent directement à l’annonce ; jusqu’à 5 redirections ; pages compressées et pages lourdes acceptées ;
-  - si la page bloque la lecture simple ou n’affiche sa date qu’avec JavaScript, elle est affichée dans une fenêtre cachée isolée (session en mémoire, sans permission, traceurs tiers, images et réseau local bloqués), avec les mêmes règles de preuve ;
+  - si la page bloque la lecture simple ou n’affiche sa date qu’avec JavaScript, elle est affichée dans une fenêtre cachée isolée (session en mémoire, sans permission, traceurs tiers, images, WebRTC et réseau local bloqués), avec les mêmes règles de preuve ;
   - nouvelles formulations reconnues : « Publiée le : … », « Date de mise en ligne », microdonnées `itemprop="datePosted"`, « Publiée il y a 3 jours / hier » (jamais « il y a 2 semaines ») ;
   - France Travail (`dateCreation`) et Adzuna (`created`) fournissent enfin leur date de publication ;
   - les offres restées sans date sont revérifiées une fois après la mise à jour ; `npm run dates:diagnostic` fait le bilan site par site.

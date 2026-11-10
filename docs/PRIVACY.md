@@ -25,7 +25,7 @@ Pour tout effacer : quitte AlterRADAR (**Quitter complètement** si la surveilla
 |---|---|---|
 | Recherche d’offres | Plateformes d’emploi activées (France Travail, Adzuna, Arbeitnow, Remotive…) et tableaux ATS publics | Mots-clés de métier, villes et rayons, identifiants API si tu les as fournis. Jamais le CV ni la lettre. |
 | Zones géographiques et tri par distance | `geo.api.gouv.fr` | Noms de communes uniquement |
-| Vérification des dates de publication | Site de l’annonce | La page publique de l’offre, sans donnée personnelle. Si une lecture simple ne suffit pas, la page est affichée dans une fenêtre cachée : aucun cookie conservé, aucun traceur tiers, aucune image, aucun accès au réseau local |
+| Vérification des dates de publication | Site de l’annonce | La page publique de l’offre, sans donnée personnelle. Si une lecture simple ne suffit pas, la page est affichée dans une fenêtre cachée : aucun cookie conservé, aucun traceur tiers, aucune image, aucun accès au réseau local ni WebRTC |
 | IA (profil, CV, lettre) | Ollama sur ton ordinateur (`127.0.0.1`) | CV, lettre, profil et annonce ; rien ne sort de la machine |
 | Alertes Telegram (si activées) | Serveurs Telegram | Titre, entreprise, lieu, extrait et lien des offres |
 | Validation Telegram (si activée) | Serveurs Telegram | CV et lettre générés au format `.docx` |

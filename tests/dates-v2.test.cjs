@@ -114,7 +114,7 @@ test('processus principal : fenêtre cachée jetable et isolée, utilisée en re
   const bloc = main.slice(debut, finBloc);
   assert.match(bloc, /const PARTITION_DATES='verification-dates'/);
   assert.doesNotMatch(bloc, /persist:/, 'session en mémoire : rien écrit sur le disque');
-  for (const attendu of [/sandbox:true/, /contextIsolation:true/, /nodeIntegration:false/, /show:false/, /images:false/, /setPermissionRequestHandler\(\(_contenu,_permission,repondre\)=>repondre\(false\)\)/, /setPermissionCheckHandler\(\(\)=>false\)/, /will-download',evenement=>evenement\.preventDefault\(\)/, /setWindowOpenHandler\(\(\)=>\(\{action:'deny'\}\)\)/, /setAudioMuted\(true\)/, /decisionRequeteRendu\(/, /fenetre\.destroy\(\)/])
+  for (const attendu of [/sandbox:true/, /contextIsolation:true/, /nodeIntegration:false/, /show:false/, /images:false/, /setPermissionRequestHandler\(\(_contenu,_permission,repondre\)=>repondre\(false\)\)/, /setPermissionCheckHandler\(\(\)=>false\)/, /will-download',evenement=>evenement\.preventDefault\(\)/, /setWindowOpenHandler\(\(\)=>\(\{action:'deny'\}\)\)/, /setAudioMuted\(true\)/, /setWebRTCIPHandlingPolicy\('disable_non_proxied_udp'\)/, /decisionRequeteRendu\(/, /fenetre\.destroy\(\)/])
     assert.match(bloc, attendu, String(attendu));
   assert.doesNotMatch(bloc, /preload:/, 'aucun pont vers l’application');
   assert.match(main, /renderPage:url=>afficherPagePourDate\(url\)/);
