@@ -95,14 +95,14 @@ body:not([data-reduce-effects="true"]) .nav-item:hover::after {opacity:1;transfo
 body:not([data-reduce-effects="true"]) .btn::before,body:not([data-reduce-effects="true"]) .nav-item::before {opacity:0!important}
 body:not([data-reduce-effects="true"]) .btn:hover::before,body:not([data-reduce-effects="true"]) .nav-item:hover::before {opacity:.18!important}
 button:focus-visible,.btn:focus-visible,.nav-item:focus-visible,.icon-button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible {outline:2px solid var(--accent)!important;outline-offset:3px}
-/* Motion system */
+/* Motion system : les entrées ne jouent qu’au changement de page (data-view-transition), jamais lors d’une mise à jour sur place. */
 @keyframes ar14-rise {from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
 @keyframes ar14-glide {from{opacity:0;transform:translateX(-7px)}to{opacity:1;transform:translateX(0)}}
-body.ar-ready:not([data-reduce-effects="true"]) .page-title {animation:ar14-rise .42s var(--ar-ease-spring) both}
-body.ar-ready:not([data-reduce-effects="true"]) .card,body.ar-ready:not([data-reduce-effects="true"]) .stat-card {animation:ar14-rise .33s var(--ar-ease) both}
-body.ar-ready:not([data-reduce-effects="true"]) .stat-grid .stat-card:nth-child(2) {animation-delay:45ms}
-body.ar-ready:not([data-reduce-effects="true"]) .stat-grid .stat-card:nth-child(3) {animation-delay:90ms}
-body.ar-ready:not([data-reduce-effects="true"]) .nav-item.active {animation:ar14-glide .25s var(--ar-ease) both}
+body.ar-ready[data-view-transition="true"]:not([data-reduce-effects="true"]) .page-title {animation:ar14-rise .42s var(--ar-ease-spring) both}
+body.ar-ready[data-view-transition="true"]:not([data-reduce-effects="true"]) .card,body.ar-ready[data-view-transition="true"]:not([data-reduce-effects="true"]) .stat-card {animation:ar14-rise .33s var(--ar-ease) both}
+body.ar-ready[data-view-transition="true"]:not([data-reduce-effects="true"]) .stat-grid .stat-card:nth-child(2) {animation-delay:45ms}
+body.ar-ready[data-view-transition="true"]:not([data-reduce-effects="true"]) .stat-grid .stat-card:nth-child(3) {animation-delay:90ms}
+body.ar-ready[data-view-transition="true"]:not([data-reduce-effects="true"]) .nav-item.active {animation:ar14-glide .25s var(--ar-ease) both}
 /* Liquid appearance stays optional: large content surfaces prioritize contrast. */
 body[data-theme="dark"][data-appearance="tinted"] .sidebar{background:rgba(13,11,19,.94)}
 body[data-apple-glass="true"] .sidebar{background:rgba(250,250,251,.97)}

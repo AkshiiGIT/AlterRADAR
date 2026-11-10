@@ -465,7 +465,7 @@ body:not([data-reduce-effects="true"]) .card,
 body:not([data-reduce-effects="true"]) .stat-card {transition:border-color .23s ease,box-shadow .25s ease}
 body:not([data-reduce-effects="true"]) .card:hover,
 body:not([data-reduce-effects="true"]) .stat-card:hover {border-color:rgba(var(--ar-tint-rgb,155,139,255),.29)}
-body:not([data-reduce-effects="true"]) .page-title {animation:ar-page-enter .36s cubic-bezier(.18,.75,.2,1) both}
+body[data-view-transition="true"]:not([data-reduce-effects="true"]) .page-title {animation:ar-page-enter .36s cubic-bezier(.18,.75,.2,1) both}
 @keyframes ar-page-enter{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
 
 /* Le réglage d'économie rend effectivement le fond et les cartes PLUS opaques. */
@@ -820,3 +820,10 @@ body[data-reduce-effects="true"] .chat-fab:hover{transform:none}
   body.chat-ouvert .app-shell{padding-right:458px}
   body.chat-ouvert .chat-panel{height:calc(100vh - 44px)}
 }
+
+/* ----- Offre sélectionnée : visible dans la liste, détail remplacé sans recharger la page ----- */
+.job-row.selected,.job-row.selected:hover{background:var(--tint);box-shadow:inset 3px 0 0 var(--accent)}
+.job-row.selected .job-name{color:var(--accent)}
+.job-row.selected .company-logo{border-color:var(--accent);color:var(--accent)}
+@keyframes ar-detail-swap{from{opacity:.4}to{opacity:1}}
+body:not([data-reduce-effects="true"]) .job-detail-swap{animation:ar-detail-swap .16s ease-out both}

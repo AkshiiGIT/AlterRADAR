@@ -180,7 +180,7 @@ function topbar(){
 function pageHeader(kicker,title,subtitle='',action='') {
   return `<div class="page-title" style="display:flex;justify-content:space-between;align-items:end;gap:18px"><div><div class="eyebrow">${kicker}</div><h1>${title}</h1>${subtitle?`<p class="subheading">${subtitle}</p>`:''}</div>${action}</div>`;
 }
-function jobRow(job){const dist=ui.jobDistances[job.id];const distanceHint=ui.state?.settings?.jobsSort==='distance'?`<span class="distance-badge" title="Distance approximative entre communes, si localisées">${typeof dist==='number'?`≈ ${dist} km`:'Lieu non localisé'}</span>`:'';return `<button class="job-row" data-action="select-job" data-id="${esc(job.id)}"><span class="company-logo">${esc(initials(job.company))}</span><span class="job-main"><span class="job-name">${esc(job.title)}</span><span class="job-meta">${esc(job.company)} · ${esc(job.contractTypes?.join(' / ')||'Type non identifié')} · ${esc(job.location||'Lieu non précisé')} · ${esc(job.source||'Source non indiquée')} · ${esc(job.atsName&&job.atsId?`ATS : ${job.atsName}`:'ATS non identifié')}</span><span class="offer-date-line">${jobDateBadge(job)}</span></span>${distanceHint}<span class="score-badge" title="Indice d’affinité, pas une probabilité de recrutement">${job.score}/100</span>${icon('chevron','s chevron')}</button>`}
+function jobRow(job){const dist=ui.jobDistances[job.id];const distanceHint=ui.state?.settings?.jobsSort==='distance'?`<span class="distance-badge" title="Distance approximative entre communes, si localisées">${typeof dist==='number'?`≈ ${dist} km`:'Lieu non localisé'}</span>`:'';const choisie=ui.page==='jobs'&&ui.jobId===job.id;return `<button class="job-row${choisie?' selected':''}" data-action="select-job" data-id="${esc(job.id)}"${choisie?' aria-current="true"':''}><span class="company-logo">${esc(initials(job.company))}</span><span class="job-main"><span class="job-name">${esc(job.title)}</span><span class="job-meta">${esc(job.company)} · ${esc(job.contractTypes?.join(' / ')||'Type non identifié')} · ${esc(job.location||'Lieu non précisé')} · ${esc(job.source||'Source non indiquée')} · ${esc(job.atsName&&job.atsId?`ATS : ${job.atsName}`:'ATS non identifié')}</span><span class="offer-date-line">${jobDateBadge(job)}</span></span>${distanceHint}<span class="score-badge" title="Indice d’affinité, pas une probabilité de recrutement">${job.score}/100</span>${icon('chevron','s chevron')}</button>`}
 function rolesHint(){const suggestions=ui.state.roleSuggestions||[];return `<p class="note" style="margin-top:8px">${suggestions.length?`Métiers déduits du CV et du cursus : <strong>${esc(suggestions.slice(0,9).join(' · '))}</strong>. Ils ne sont pas obligatoires : tu peux les personnaliser.`:'Importe ton CV pour découvrir automatiquement les métiers compatibles avec tes compétences et ta formation.'}</p>`;}
 function contractCheckboxes(settings){
   const types=settings.searchTypes||['alternance'];
@@ -226,7 +226,30 @@ function jobs(){
     ${ui.state.settings.jobsSort==='distance'?`<p class="sort-explanation" role="status">${ui.distanceLoading?'Calcul de proximité en cours…':esc(ui.distanceStatus||'Les distances sont approximatives, calculées entre les centres de communes françaises. Les lieux inconnus arrivent en dernier.')}</p>`:ui.state.settings.jobsSort==='recent'?'<p class="sort-explanation">Date de publication quand disponible ; sinon date de découverte par AlterRADAR.</p>':''}
     ${geoSearchForm()}
     <div class="two-cols"><div class="card"><div class="card-header"><h3>${filtered.length} offre(s) compatibles</h3><span class="tag">${ui.state.jobs.length} analysées · ${ui.state.jobs.filter(j=>!j.eligible).length} exclue(s)</span></div>${filtered.length?`<div class="job-list">${filtered.map(jobRow).join('')}</div>`:empty('search','Aucune offre compatible pour le moment','AlterRADAR analyse les sources publiques automatiquement. Si aucune offre n’apparaît, regarde le diagnostic dans Surveillance ; des API peuvent être limitées ou nécessiter une clé gratuite.',`<button class="btn primary" data-nav="monitor">Voir les sources ${icon('arrow','s')}</button>`)}</div>
-    <div class="column-flow">${selected?jobDetail(selected):`<div class="card">${empty('briefcase','Sélectionne une offre','Consulte l’annonce officielle, les contacts publics éventuels et prépare un dossier.')}</div>`}</div></div></section>`;
+    <div class="column-flow" id="job-detail-column">${selected?jobDetail(selected):`<div class="card">${empty('briefcase','Sélectionne une offre','Consulte l’annonce officielle, les contacts publics éventuels et prépare un dossier.')}</div>`}</div></div></section>`;
+}
+/**
+ * Sélectionne une offre SANS reconstruire la page : seule la colonne de détail change.
+ * La liste, son défilement, le focus et le reste de l'écran restent en place.
+ * Renvoie false si ce n'est pas possible (autre page, offre absente) : on retombe sur render().
+ */
+function selectionnerOffreSurPlace(id){
+  const colonne=document.getElementById('job-detail-column');
+  const job=(ui.state?.jobs||[]).find(j=>j.id===id&&j.eligible);
+  if(!colonne||!job)return false;
+  ui.jobId=id;
+  appEl.querySelectorAll('.job-row[data-action="select-job"]').forEach(ligne=>{
+    const choisie=ligne.dataset.id===id;
+    ligne.classList.toggle('selected',choisie);
+    if(choisie)ligne.setAttribute('aria-current','true');else ligne.removeAttribute('aria-current');
+  });
+  document.body.dataset.viewTransition='false';
+  colonne.innerHTML=jobDetail(job);
+  colonne.firstElementChild?.classList.add('job-detail-swap');
+  chatMajContexte();
+  // Écran étroit : le détail passe sous la liste, on l'amène à l'écran.
+  if(colonne.getBoundingClientRect().top>window.innerHeight-120)colonne.scrollIntoView({block:'start',behavior:document.body.dataset.reduceEffects==='true'?'auto':'smooth'});
+  return true;
 }
 function jobDetail(job){
   const generated = ui.state.outputs[job.id] || {};
@@ -778,7 +801,7 @@ appEl.addEventListener('click',async(event)=>{
     return;
   }
   if(action==='all-jobs'){ui.page='jobs';render();return;}
-  if(action==='select-job'){ui.page='jobs';ui.jobId=id;render();return;}
+  if(action==='select-job'){if(ui.page==='jobs'&&selectionnerOffreSurPlace(id))return;ui.page='jobs';ui.jobId=id;render();return;}
   if(action==='application-detail'){ui.page='applications';ui.jobId=id;render();return;}
   if(action==='focus-new-job'){document.getElementById('add-job')?.scrollIntoView({behavior:'smooth'});document.querySelector('#add-job-form input')?.focus();return;}
   if(action==='verify-job-date'){const result=await perform(()=>window.radar.verifyJobDate(id));if(result){const msg=result.dateCheckStatus==='verified'?'Date de publication confirmée sur le site officiel.':result.dateCheckStatus==='error'?`Échec de la vérification : ${result.dateCheckError||'site indisponible'}. Consulte l’annonce officielle.`:'Page consultée : aucune date de publication explicite trouvée.';tip(msg,result.dateCheckStatus==='verified'?'success':'error');}return;}

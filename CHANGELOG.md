@@ -14,6 +14,7 @@ Créé et développé par **Akasche MAHINTAN** · licence MIT.
   - Cadre strict : un routeur classe chaque message (sortie JSON contrainte). Hors cadre, ou classification illisible, le refus est fixe et aucun texte n’est généré.
   - Infos entreprise limitées aux annonces enregistrées et au suivi des candidatures, sans accès au web ni connaissances du modèle.
   - Mémoire des 3 derniers échanges, gardée dans le processus principal.
+- Offres : cliquer une annonce la met en surbrillance et remplace seulement le détail, sans reconstruire la page. Les animations d’entrée ne jouent plus qu’au changement de page (avant, la moindre mise à jour les rejouait et donnait l’impression d’un rechargement).
 - `npm run ia:serveur` : les trois fonctions exposées en HTTP (SSE), conformes au contrat de route du cours « Les Fondamentaux de l’IA » (ESGI 3IW).
 - L’autotest vérifie que la documentation lue par l’assistant est bien embarquée dans l’application.
 
