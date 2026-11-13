@@ -827,3 +827,35 @@ body[data-reduce-effects="true"] .chat-fab:hover{transform:none}
 .job-row.selected .company-logo{border-color:var(--accent);color:var(--accent)}
 @keyframes ar-detail-swap{from{opacity:.4}to{opacity:1}}
 body:not([data-reduce-effects="true"]) .job-detail-swap{animation:ar-detail-swap .16s ease-out both}
+
+/* ----- Guide de bienvenue (premier démarrage) ----- */
+.bienvenue-fond{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:24px;background:rgba(8,10,18,.55);backdrop-filter:blur(6px)}
+.bienvenue-fond.entree{animation:bienvenue-fondu .18s ease-out}
+.bienvenue-panneau{width:min(640px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;color:var(--text)}
+.bienvenue-entete{display:flex;align-items:center;gap:14px;padding:16px 18px;border-bottom:1px solid var(--border)}
+.bienvenue-entete .brand-mark{width:34px;height:34px;border-radius:11px;flex-shrink:0}
+.bienvenue-etapes{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0;list-style:none;margin:0;padding:0}
+.bienvenue-etapes button{border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-weight:650;padding:6px 10px;border-radius:100px;white-space:nowrap}
+.bienvenue-etapes li.active button{background:var(--tint);color:var(--accent);border-color:transparent}
+.bienvenue-etapes li.faite button{color:var(--soft)}
+.bienvenue-etapes button:hover{border-color:var(--accent)}
+.bienvenue-corps{padding:24px 26px;overflow:auto;display:flex;flex-direction:column;gap:15px}
+.bienvenue-corps h2{font-size:22px}
+.bienvenue-points .info-line{align-items:flex-start;line-height:1.6;margin:10px 0}
+.bienvenue-points .info-line .ico{margin-top:3px;flex-shrink:0}
+.bienvenue-modele strong{font-size:18px;margin:5px 0}
+.bienvenue-corps .codepill{padding:3px 7px;font-size:11px}
+#bienvenue-telechargement:empty{display:none}
+.bienvenue-pied{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;border-top:1px solid var(--border);background:var(--surface2)}
+body.bienvenue-ouvert{overflow:hidden}
+@keyframes bienvenue-fondu{from{opacity:0}to{opacity:1}}
+body[data-reduce-effects="true"] .bienvenue-fond{animation:none;backdrop-filter:none}
+.toast-wrap{z-index:90}
+@media (max-width:700px){.bienvenue-fond{padding:12px}.bienvenue-etapes{display:none}.bienvenue-corps{padding:20px}}
+
+/* ----- Réinitialisation (Paramètres) ----- */
+.reinit-confirmation{padding:16px 0 4px}
+.reinit-confirmation .alert p{margin-top:8px}
+.btn.danger-plein{background:#c7484f;border-color:#c7484f;color:#fff}
+.btn.danger-plein:hover{background:#b23d44;border-color:#b23d44}
+.btn.danger-plein:disabled{opacity:.45;cursor:not-allowed;transform:none}

@@ -40,6 +40,7 @@ Tout reste sur ton ordinateur. Il n’y a pas de compte à créer, pas de serveu
 | **Telegram (facultatif)** | Alertes et validation des dossiers depuis ton téléphone, via ton propre bot. |
 | **Surveillance en arrière-plan** | Nouvelle recherche toutes les 5 minutes depuis la zone de notification (Windows) ou la barre des menus (macOS). |
 | **Apparence** | Thème clair Pure White, thème sombre Twilight Purple, verre dépoli, fonds d’écran locaux. |
+| **Guide et réinitialisation** | Guide de démarrage au premier lancement (Ollama, modèle IA, CV). Réinitialisation complète depuis Paramètres. |
 
 | Offres compatibles (thème Twilight Purple) | Apparence personnalisée |
 |:---:|:---:|

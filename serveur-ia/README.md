@@ -90,7 +90,7 @@ Réglages : `PORT`, `OLLAMA_BASE_URL`, `MODEL_BASE` (défaut `qwen2.5:3b`), `MOD
 ## Vérifier
 
 ```bash
-npm test                               # 205 tests, dont 28 pour l’assistant et le chatbot (faux Ollama, aucun modèle requis)
+npm test                               # 219 tests, dont 28 pour l’assistant et le chatbot (faux Ollama, aucun modèle requis)
 
 # Suite de conformité du cours, depuis le dépôt du cours, ce serveur lancé sur le port 3000 :
 make conformite

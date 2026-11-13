@@ -3,6 +3,12 @@
 Toutes les versions d’AlterRADAR, de la plus récente à la plus ancienne.
 Créé et développé par **Akasche MAHINTAN** · licence MIT.
 
+## v0.16.0 — Guide de démarrage et réinitialisation
+
+- **Guide de bienvenue** au premier démarrage, en 4 étapes : présentation, installation d’Ollama, choix du modèle IA, import du CV. Chaque étape montre l’état réel : Ollama est détecté tout seul dès qu’il est lancé, le modèle conseillé s’installe en un clic avec sa progression, le CV importé est coché. Le guide se rouvre depuis **Paramètres → Guide et réinitialisation**. Les utilisateurs qui ont déjà créé leur profil ne le voient pas à la mise à jour.
+- **Réinitialiser AlterRADAR** dans Paramètres : efface profil, CV, lettre, offres, candidatures, historique, documents générés, règles, réglages, liaison Telegram, mot de passe SMTP, fond d’écran, brouillons e-mail et sauvegardes de profils, puis vide le stockage du navigateur intégré et recharge l’application comme à la première installation. Confirmation tapée obligatoire, refusée pendant une recherche en cours. Ollama et ses modèles ne sont pas touchés.
+- Quand Ollama devient joignable, un modèle installé est choisi automatiquement (le modèle conseillé s’il est présent).
+
 ## v0.15.0 — Assistant IA, chatbot et dates de publication
 
 - Nouvel onglet **Assistant IA**, entièrement local avec Ollama :

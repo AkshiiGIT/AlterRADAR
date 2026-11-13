@@ -7,6 +7,7 @@ const {nativeImage}=require('electron');
 const {imageKind,prepareWallpaper}=require('../lib/wallpaper.cjs');
 const {checkTelegramHealth}=require('../lib/telegram-health.cjs');
 const {candidateChanged,resetCandidateData,invalidateGeneratedFiles}=require('../lib/profile-switch.cjs');
+const {effacerDonneesLocales,confirmationValide}=require('../lib/reinitialisation.cjs');
 const {SECTORS,normalizeZones,normalizeSector,sectorFit,searchFingerprint}=require('../lib/search-preferences.cjs');
 const {approximateDistances}=require('../lib/proximity.cjs');
 const { recommendedModel, normalizeModels, selectInstalledModel, parseBoard, relevantJob, scoreJob, validateHttpsUrl, jobId, clean } = require('../lib/domain.cjs');
@@ -78,7 +79,7 @@ let runtime = {scanning:false,lastError:'',lastTelegramError:''};
 function initialState() {
   return {
     schema: 2,
-    settings: { theme: 'light', jobsSort:'score', selectedModel: '', strictCareer:true, excludeUnknownEducation: false, autoStart:false, telegramChatId:'', telegramTokenEncrypted:'', telegramApprovalsEnabled:false, telegramOffset:0, monitoringEnabled:false, intervalMinutes:5,scanCadenceV2:true, autoPrepare:false, smtpHost:'', smtpPort:587, smtpUser:'', smtpFrom:'', smtpPasswordEncrypted:'', deliveryMode:'draft', searchTypes:['alternance'], onlyAlternance:true, excludePrivateSchools:true, onboardingCompleted:false, sourceEnabled:[...DEFAULT_ENABLED], sourceCredentialsEncrypted:{}, maxNotificationsPerScan:12, autoEducationLimit:true, appearanceStyle:'solid', wallpaperMode:'none', glassTint:'#523568', glassIntensity:50, reduceEffects:false,searchZones:[],sector:'all',backgroundHintShown:false },
+    settings: { theme: 'light', jobsSort:'score', selectedModel: '', strictCareer:true, excludeUnknownEducation: false, autoStart:false, telegramChatId:'', telegramTokenEncrypted:'', telegramApprovalsEnabled:false, telegramOffset:0, monitoringEnabled:false, intervalMinutes:5,scanCadenceV2:true, autoPrepare:false, smtpHost:'', smtpPort:587, smtpUser:'', smtpFrom:'', smtpPasswordEncrypted:'', deliveryMode:'draft', searchTypes:['alternance'], onlyAlternance:true, excludePrivateSchools:true, onboardingCompleted:false, sourceEnabled:[...DEFAULT_ENABLED], sourceCredentialsEncrypted:{}, maxNotificationsPerScan:12, autoEducationLimit:true, appearanceStyle:'solid', wallpaperMode:'none', glassTint:'#523568', glassIntensity:50, reduceEffects:false,searchZones:[],sector:'all',backgroundHintShown:false,welcomeSeen:false },
     rules: defaultRules().map(r=>({...r,enabled:false})), boards:[], monitoring: {lastScanAt:'',lastResult:null,sourceRuns:{},sourceResults:[]},
     profile: { name: '', email: '', education: '', level: '', roles: '', skills: '', location: '', rhythm: '', experience: '' },
     documents: { cv: null, letter: null }, jobs: [], outputs: {}
@@ -103,7 +104,8 @@ function readState() {
       ...defaults,
       profile: { ...defaults.profile, ...(saved.profile || {}) },
       settings: { ...defaults.settings, ...(saved.settings || {}),searchTypes:normalizeTypes(Array.isArray(saved.settings?.searchTypes)?saved.settings.searchTypes:(saved.settings?.onlyAlternance===false?['alternance','stage']:['alternance'])),sourceEnabled:migrateEnabledSources(saved.settings?.sourceEnabled??DEFAULT_ENABLED),
-        ...appearanceFromSaved(saved.settings||{}),scanCadenceV2:true,intervalMinutes:(saved.settings?.scanCadenceV2===true ? Math.max(5,Number(saved.settings.intervalMinutes)||5) : 5),jobsSort:['score','recent','distance'].includes(saved.settings?.jobsSort)?saved.settings.jobsSort:'score',searchZones:(()=>{try{return normalizeZones(saved.settings?.searchZones||[])}catch{return []}})(),sector:(()=>{try{return normalizeSector(saved.settings?.sector)}catch{return 'all'}})() },
+        ...appearanceFromSaved(saved.settings||{}),scanCadenceV2:true,intervalMinutes:(saved.settings?.scanCadenceV2===true ? Math.max(5,Number(saved.settings.intervalMinutes)||5) : 5),jobsSort:['score','recent','distance'].includes(saved.settings?.jobsSort)?saved.settings.jobsSort:'score',searchZones:(()=>{try{return normalizeZones(saved.settings?.searchZones||[])}catch{return []}})(),sector:(()=>{try{return normalizeSector(saved.settings?.sector)}catch{return 'all'}})(),
+        welcomeSeen:typeof saved.settings?.welcomeSeen==='boolean'?saved.settings.welcomeSeen:saved.settings?.onboardingCompleted===true },
       rules: Array.isArray(saved.rules) ? saved.rules.map(r => { try { return validateRule(r); } catch { return null; } }).filter(Boolean).slice(0,50) : defaults.rules,
       boards: Array.isArray(saved.boards)?saved.boards.filter(url=>{try{parseBoard(url);return true;}catch{return false;}}).slice(0,80):[],
       monitoring: {...defaults.monitoring,...(saved.monitoring||{})},
@@ -1049,6 +1051,27 @@ function registerIpc() {
     state.settings.wallpaperMode='image';persist();return {cancelled:false,optimized:processed.optimized,dataUrl:`data:${kind.mime};base64,${data.toString('base64')}`};
   });
   ipcMain.handle('app:wallpaper-get', () => wallpaperData());
+  // Réinitialisation complète, comme une première installation. Ollama et ses modèles restent.
+  ipcMain.handle('app:reset-all', async (event, confirmation) => {
+    if(!confirmationValide(confirmation))throw new Error('Confirmation manquante : tape RÉINITIALISER.');
+    if(scanning)throw new Error('Une recherche d’offres est en cours. Réessaie dès qu’elle est terminée.');
+    const dossier=app.getPath('userData');
+    effacerDonneesLocales(dossier);
+    state=initialState();
+    // Le fichier est recréé tout de suite : absent, le démarrage suivant réimporterait
+    // les données de l'ancien nom de l'application (« Radar Alternance »).
+    persist();
+    assistantIA=null; // oublie les conversations du chatbot et son journal
+    telegramPairing=null;
+    runtime={scanning:false,lastError:'',lastTelegramError:''};
+    nativeTheme.themeSource=state.settings.theme;
+    updateMonitoring(); // retire l'icône de surveillance et l'ouverture à la connexion
+    try{await session.defaultSession.clearStorageData();await session.defaultSession.clearCache();}catch{/* rien à vider */}
+    // Recharge l'interface après la réponse : elle repart de zéro, guide de bienvenue compris.
+    const contenu=event.sender;
+    setTimeout(()=>{if(!contenu.isDestroyed())contenu.reload();},150);
+    return {ok:true};
+  });
   ipcMain.handle('app:wallpaper-clear', () => {
     for(const ext of ['png','jpg','webp'])try{fs.unlinkSync(path.join(app.getPath('userData'),'alterradar-wallpaper.'+ext));}catch{}
     state.settings.wallpaperMode='none';persist();return snapshot();
@@ -1171,7 +1194,7 @@ function registerIpc() {
     if(Object.hasOwn(patch||{},'searchZones'))state.settings.searchZones=normalizeZones(patch.searchZones);
     if(Object.hasOwn(patch||{},'sector'))state.settings.sector=normalizeSector(patch.sector);
     if(Object.hasOwn(patch||{},'searchTypes')){state.settings.searchTypes=normalizeTypes(patch.searchTypes);state.settings.onlyAlternance=state.settings.searchTypes.length===1&&state.settings.searchTypes[0]==='alternance';}
-    for(const key of ['excludeUnknownEducation','excludePrivateSchools','strictCareer','autoEducationLimit','reduceEffects','monitoringEnabled','autoPrepare','autoStart','telegramApprovalsEnabled']) if(Object.hasOwn(patch||{},key))state.settings[key]=patch[key]===true;
+    for(const key of ['excludeUnknownEducation','excludePrivateSchools','strictCareer','autoEducationLimit','reduceEffects','monitoringEnabled','autoPrepare','autoStart','telegramApprovalsEnabled','welcomeSeen']) if(Object.hasOwn(patch||{},key))state.settings[key]=patch[key]===true;
     if(Object.hasOwn(patch||{},'appearanceStyle')){
       if(!['solid','glass','tinted'].includes(patch.appearanceStyle))throw new Error('Style visuel invalide.');
       state.settings.appearanceStyle=patch.appearanceStyle;

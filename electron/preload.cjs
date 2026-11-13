@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('radar', Object.freeze({
   wallpaperImport: () => ipcRenderer.invoke('app:wallpaper-import'),
   wallpaperGet: () => ipcRenderer.invoke('app:wallpaper-get'),
   wallpaperClear: () => ipcRenderer.invoke('app:wallpaper-clear'),
+  resetAll: confirmation => ipcRenderer.invoke('app:reset-all',confirmation),
   onModelPull: listener => {
     if(typeof listener !== 'function')return ()=>{};
     const handler=(_event,info)=>listener(info);

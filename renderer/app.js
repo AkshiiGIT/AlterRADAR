@@ -114,6 +114,8 @@ function paintModelPull(){
   if(inline)inline.innerHTML=modelPullMarkup();
   const dock=document.getElementById('model-pull-dock');
   if(dock){dock.hidden=ui.page==='settings'||!ui.modelProgress;dock.innerHTML=dock.hidden?'':modelPullMarkup();}
+  const guide=document.getElementById('bienvenue-telechargement');
+  if(guide)guide.innerHTML=ui.modelProgress?modelPullMarkup():'';
 }
 async function startQwenDownload(model=null){
   if(ui.modelProgress?.active){tip('Un téléchargement est déjà en cours.','error');return;}
@@ -126,6 +128,7 @@ async function startQwenDownload(model=null){
     const [models,state]=await Promise.all([window.radar.models(),window.radar.state()]);
     ui.models=models;ui.state=state;
     if(ui.page==='settings'&&!ui.dirty&&!document.querySelector('input:focus, textarea:focus, select:focus'))render();
+    if(bienvenue.ouvert)bienvenuePeindre();
     tip(result.alreadyInstalled?'Modèle Qwen sélectionné.':'Modèle Qwen installé et sélectionné.');
   }catch(error){
     if(ui.modelProgress?.active){ui.modelProgress={...ui.modelProgress,status:String(error.message||'Échec de l’installation'),active:false,error:true,done:true};paintModelPull();}
@@ -417,8 +420,13 @@ function settings(){
       <div class="inline-actions space-top"><button class="btn" data-action="wallpaper-pick">${icon('upload','s')} Importer une image (PNG/JPG/WebP · 32 Mo max, compression auto)</button><button class="btn ghost" data-action="wallpaper-clear">${icon('refresh','s')} Retirer l'image</button></div>
       <p class="note space-top">L'image est enregistrée dans les données locales d'AlterRADAR, jamais dans le dépôt Git ni sur un serveur. L'effet reste facultatif pour privilégier la lisibilité.</p>
     </section>
+    <section class="card space-top reinit-settings"><div class="card-header"><div><h2>Guide et réinitialisation</h2><p class="subtitle">Revoir le tutoriel d’installation, ou repartir de zéro.</p></div>${icon('refresh')}</div>
+      <div class="settings-row"><div class="settings-label"><strong>Guide de démarrage</strong><span>Installation d’Ollama, choix du modèle IA et import du CV, pas à pas.</span></div><button class="btn small" data-action="ouvrir-guide">${icon('sparkles','s')} Ouvrir le guide</button></div>
+      <div class="settings-row"><div class="settings-label"><strong>Réinitialiser AlterRADAR</strong><span>Efface toutes tes données et tous tes réglages sur cet ordinateur, comme à la première installation.</span></div>${ui.reinit?'':`<button class="btn small danger" data-action="reinit-demander">${icon('trash','s')} Réinitialiser…</button>`}</div>
+      ${ui.reinit?reinitConfirmationHtml():''}
+    </section>
     <section class="card space-top about-alterradar"><div class="card-header"><h3>À propos d’AlterRADAR</h3>${icon('info')}</div>
- <p class="lead"><strong>AlterRADAR</strong> · Version ${esc(ui.state.version||'0.15.0')} · Application gratuite et open source pour Windows et macOS.</p>
+ <p class="lead"><strong>AlterRADAR</strong> · Version ${esc(ui.state.version||'0.16.0')} · Application gratuite et open source pour Windows et macOS.</p>
  <p class="creator-about">Créé et développé par <strong>Akasche MAHINTAN</strong>.</p>
  <div class="about-points space-top"><div class="about-point"><strong>${icon('shield','s')} Tes données restent sur ton ordinateur par défaut.</strong><p>Ton profil, tes documents, tes règles de tri, tes candidatures et ton historique sont conservés localement. Les modèles Ollama génèrent tes documents sur ton propre PC. AlterRADAR ne possède pas de serveur central de comptes, de CV ou de télémétrie.</p></div>
  <div class="about-point"><strong>${icon('user','s')} Le créateur n’a pas accès à tes données personnelles.</strong><p>Akasche MAHINTAN ne reçoit pas les fichiers enregistrés sur ton appareil et ne peut pas consulter ton dossier depuis AlterRADAR. Attention : tes fichiers locaux ne sont pas chiffrés au repos ; protège ta session.</p></div>
@@ -687,6 +695,139 @@ function chatEcouter(racine){
     else if(event.key==='Escape'){chat.ouvert=false;chatPeindre(true);}
   });
 }
+// ----- Guide de bienvenue ---------------------------------------------------------------
+// Affiché au premier démarrage (réglage welcomeSeen) et à la demande depuis Paramètres.
+// Chaque étape montre l'état réel : Ollama joignable, modèle installé, CV importé.
+const bienvenue={ouvert:false,etape:0,sonde:null};
+const BIENVENUE_ETAPES=['Bienvenue','Ollama','Modèle IA','Ton CV'];
+function bienvenueRacine(){
+  let racine=document.getElementById('bienvenue-root');
+  if(!racine){racine=document.createElement('div');racine.id='bienvenue-root';document.body.appendChild(racine);bienvenueEcouter(racine);}
+  return racine;
+}
+const bienvenueOk=texte=>`<span class="tag good">${icon('check','s')} ${texte}</span>`;
+const bienvenueAttente=texte=>`<span class="tag warn">${texte}</span>`;
+function bienvenueContenu(){
+  const sys=ui.system||{},mac=sys.platform==='darwin';
+  const connecte=ui.models.connected,modeles=ui.models.models||[],reco=sys.recommended;
+  const choisi=modeles.find(m=>m.name===ui.state?.settings?.selectedModel);
+  const catalogue=(ui.modelCatalog||[]).find(m=>m.name===reco);
+  const cv=ui.state?.documents?.cv;
+  if(bienvenue.etape===0)return `<h2 id="bienvenue-titre">Bienvenue sur AlterRADAR</h2>
+    <p class="lead">AlterRADAR cherche pour toi des alternances et des stages qui correspondent à ton CV, puis t’aide à préparer tes CV et tes lettres de motivation.</p>
+    <div class="bienvenue-points">
+      <div class="info-line">${icon('search','s')}<span>Les offres viennent de sources publiques (France Travail, La bonne alternance, sites d’emploi…) et sont triées selon ton profil.</span></div>
+      <div class="info-line">${icon('cpu','s')}<span>L’IA tourne sur ton ordinateur grâce à Ollama : ni compte, ni abonnement.</span></div>
+      <div class="info-line">${icon('shield','s')}<span>Tes documents restent ici. Rien ne part chez un recruteur sans ta validation.</span></div>
+    </div>
+    <p class="note">Trois étapes : installer Ollama, télécharger un modèle IA, importer ton CV. Compte 5 minutes, plus le téléchargement du modèle (quelques Go).</p>`;
+  if(bienvenue.etape===1)return `<h2 id="bienvenue-titre">Installer Ollama</h2>
+    <p class="lead">Ollama est le moteur qui fait tourner l’IA en local. La recherche d’offres marche sans lui, mais il en faut un pour écrire tes CV et tes lettres et pour répondre dans l’assistant.</p>
+    <div class="bienvenue-statut">${connecte?bienvenueOk('Ollama détecté'):bienvenueAttente('Ollama pas encore détecté')}</div>
+    ${connecte?'<p class="note">Tout est bon, passe à l’étape suivante.</p>':`<div class="step-list">
+      <div class="step"><span class="step-num">1</span><div><strong>Télécharge Ollama</strong><p>Avec le bouton ci-dessous, version ${mac?'macOS':'Windows'}. Gratuit, sans compte.</p></div></div>
+      <div class="step"><span class="step-num">2</span><div><strong>Installe-le</strong><p>${mac?'Ouvre le fichier téléchargé et glisse Ollama dans le dossier Applications.':'Lance OllamaSetup.exe et suis l’installation.'}</p></div></div>
+      <div class="step"><span class="step-num">3</span><div><strong>Lance-le</strong><p>${mac?'Ouvre Ollama depuis Applications : son icône (un lama) apparaît dans la barre des menus, en haut de l’écran.':'Ollama démarre tout seul : son icône (un lama) apparaît près de l’horloge.'}</p></div></div>
+    </div>
+    <div class="inline-actions"><button type="button" class="btn primary" data-bienvenue="ollama">${icon('download','s')} Télécharger Ollama ${icon('up-right','s')}</button><button type="button" class="btn" data-bienvenue="verifier">${icon('refresh','s')} Vérifier maintenant</button></div>
+    <p class="note">AlterRADAR vérifie tout seul toutes les 5 secondes : cette étape se coche dès qu’Ollama est lancé.</p>`}`;
+  if(bienvenue.etape===2)return `<h2 id="bienvenue-titre">Télécharger un modèle IA</h2>
+    <p class="lead">Le modèle, c’est le « cerveau » qu’utilise Ollama. AlterRADAR conseille celui qui convient à la mémoire de ton ordinateur${sys.totalGb?` (${esc(sys.totalGb)} Go de RAM)`:''}.</p>
+    <div class="bienvenue-statut">${choisi?bienvenueOk(`${esc(choisi.name)} installé et choisi`):!connecte?bienvenueAttente('Ollama requis (étape précédente)'):bienvenueAttente('Aucun modèle choisi')}</div>
+    ${!connecte?'<p class="note">Installe et lance Ollama d’abord, puis reviens ici. Tu peux aussi passer cette étape et la faire plus tard dans Paramètres.</p>'
+      :choisi?'<p class="note">Tu pourras changer de modèle à tout moment dans Paramètres.</p>'
+      :reco?`<div class="metric bienvenue-modele"><small>Modèle conseillé</small><strong>${esc(reco)}</strong><small>${esc(catalogue?.note||'Adapté à ta mémoire')}${catalogue?` · RAM conseillée : ${catalogue.minRam} Go`:''}</small></div>
+        <div class="inline-actions"><button type="button" class="btn primary" data-bienvenue="installer" ${ui.modelProgress?.active?'disabled':''}>${icon('download','s')} ${modeles.some(m=>m.name===reco)?`Utiliser ${esc(reco)}`:`Installer ${esc(reco)}`}</button></div>`
+      :`<div class="alert">${icon('info')}<span>Ton ordinateur a peu de mémoire : l’IA locale risque d’être très lente. La recherche d’offres marche sans elle, et tu peux essayer un petit modèle dans Paramètres.</span></div>`}
+    <div id="bienvenue-telechargement">${ui.modelProgress?modelPullMarkup():''}</div>
+    ${choisi||!connecte?'':'<p class="note">Le téléchargement fait plusieurs Go : tu peux continuer le guide pendant ce temps.</p>'}
+    <p class="note">Facultatif, pour une aide plus précise dans l’assistant : <span class="codepill">ollama pull paraphrase-multilingual</span></p>`;
+  return `<h2 id="bienvenue-titre">Importer ton CV</h2>
+    <p class="lead">AlterRADAR lit ton CV (PDF, DOCX ou TXT) pour en déduire ta formation, ton niveau et les métiers possibles. Tu vérifies, puis la recherche d’offres démarre.</p>
+    <div class="bienvenue-statut">${cv?bienvenueOk(`CV importé : ${esc(cv.name||'')}`):bienvenueAttente('Pas encore de CV')}</div>
+    <div class="step-list">
+      <div class="step"><span class="step-num">1</span><div><strong>Importe ton CV</strong><p>Une ancienne lettre de motivation aide aussi pour le style. Elle est facultative.</p></div></div>
+      <div class="step"><span class="step-num">2</span><div><strong>Vérifie ton profil</strong><p>Surtout le niveau d’études : il sert de filtre strict.</p></div></div>
+      <div class="step"><span class="step-num">3</span><div><strong>Lance la recherche</strong><p>Les offres compatibles arrivent dans « Offres ». Les alertes Telegram et l’envoi par e-mail se règlent plus tard, s’ils t’intéressent.</p></div></div>
+    </div>`;
+}
+function bienvenueHtml(entree=false){
+  if(!bienvenue.ouvert)return '';
+  const e=bienvenue.etape,dernier=e===BIENVENUE_ETAPES.length-1,cv=ui.state?.documents?.cv;
+  const suite=!dernier?`<button type="button" class="btn primary" data-bienvenue="suivant">${e===0?'Commencer':'Suivant'} ${icon('arrow','s')}</button>`
+    :cv?`<button type="button" class="btn primary" data-bienvenue="terminer">${icon('check','s')} Terminer</button>`
+    :`<div class="inline-actions"><button type="button" class="btn" data-bienvenue="terminer">Plus tard</button><button type="button" class="btn primary" data-bienvenue="importer-cv">${icon('upload','s')} Importer mon CV</button></div>`;
+  return `<div class="bienvenue-fond${entree?' entree':''}"><section class="bienvenue-panneau" role="dialog" aria-modal="true" aria-labelledby="bienvenue-titre">
+    <header class="bienvenue-entete"><span class="brand-mark">${icon('radar')}</span><ol class="bienvenue-etapes" aria-label="Étapes du guide">${BIENVENUE_ETAPES.map((titre,i)=>`<li class="${i===e?'active':i<e?'faite':''}"><button type="button" data-bienvenue="aller" data-etape="${i}"${i===e?' aria-current="step"':''}>${i+1}. ${titre}</button></li>`).join('')}</ol><button type="button" class="icon-button" data-bienvenue="fermer" title="Fermer le guide (Échap)" aria-label="Fermer le guide">${icon('x')}</button></header>
+    <div class="bienvenue-corps">${bienvenueContenu()}</div>
+    <footer class="bienvenue-pied"><button type="button" class="btn ghost" data-bienvenue="${e?'precedent':'fermer'}">${e?'Précédent':'Passer le guide'}</button>${suite}</footer>
+  </section></div>`;
+}
+/** entree=true seulement à l'ouverture : changer d'étape ne rejoue pas le fondu. */
+function bienvenuePeindre(entree=false){
+  const racine=bienvenueRacine();
+  racine.innerHTML=bienvenueHtml(entree);
+  document.body.classList.toggle('bienvenue-ouvert',bienvenue.ouvert);
+  bienvenueSonde();
+  if(bienvenue.ouvert)racine.querySelector('.bienvenue-pied .btn.primary')?.focus();
+}
+/** À l'étape Ollama, détecte son lancement sans que l'utilisateur ait à cliquer. */
+function bienvenueSonde(){
+  const actif=bienvenue.ouvert&&bienvenue.etape===1&&!ui.models.connected;
+  if(actif&&!bienvenue.sonde)bienvenue.sonde=setInterval(async()=>{
+    try{
+      const modeles=await window.radar.models();
+      const change=modeles.connected!==ui.models.connected;
+      ui.models=modeles;
+      if(change){await modeleParDefaut();bienvenuePeindre();if(!ui.dirty)render();}
+    }catch{/* nouvel essai dans 5 s */}
+  },5000);
+  if(!actif&&bienvenue.sonde){clearInterval(bienvenue.sonde);bienvenue.sonde=null;}
+}
+function bienvenueOuvrir(etape=0){bienvenue.ouvert=true;bienvenue.etape=etape;bienvenuePeindre(true);}
+/** Dès qu'Ollama répond avec des modèles, en choisir un (le conseillé s'il est installé). */
+async function modeleParDefaut(){
+  if(ui.state?.settings?.selectedModel||!ui.models.models?.length)return;
+  const conseille=ui.models.models.find(m=>m.name===ui.system?.recommended);
+  try{ui.state=await window.radar.saveSettings({selectedModel:(conseille||ui.models.models[0]).name});}catch{/* choix manuel dans Paramètres */}
+}
+async function bienvenueFermer(){
+  bienvenue.ouvert=false;bienvenuePeindre();
+  if(!ui.state?.settings?.welcomeSeen){try{ui.state=await window.radar.saveSettings({welcomeSeen:true});}catch{/* reproposé au prochain démarrage */}}
+}
+function bienvenueEcouter(racine){
+  racine.addEventListener('click',async event=>{
+    const cible=event.target.closest('[data-bienvenue],[data-action]');if(!cible)return;
+    if(cible.dataset.action){await actionTelechargement(cible.dataset.action);return;}
+    const action=cible.dataset.bienvenue;
+    if(action==='suivant'||action==='precedent'||action==='aller'){
+      bienvenue.etape=action==='aller'?Number(cible.dataset.etape)||0:Math.max(0,Math.min(BIENVENUE_ETAPES.length-1,bienvenue.etape+(action==='suivant'?1:-1)));
+      bienvenuePeindre();
+    }
+    else if(action==='fermer'||action==='terminer')await bienvenueFermer();
+    else if(action==='ollama')await window.radar.openOllama().catch(error=>tip(error?.message||'Lien indisponible.','error'));
+    else if(action==='verifier'){
+      cible.disabled=true;
+      try{ui.models=await window.radar.models();await modeleParDefaut();}catch{/* reste hors ligne */}
+      bienvenuePeindre();if(!ui.dirty)render();
+      if(!ui.models.connected)tip('Ollama ne répond pas encore. Vérifie qu’il est bien lancé.','error');
+    }
+    else if(action==='installer'){void startQwenDownload();bienvenuePeindre();}
+    else if(action==='importer-cv'){await bienvenueFermer();ui.page='onboarding';render();await importerDocument('cv');}
+  });
+  racine.addEventListener('keydown',event=>{if(event.key==='Escape'&&bienvenue.ouvert){event.preventDefault();bienvenueFermer();}});
+}
+// ----- Réinitialisation -------------------------------------------------------------------
+const confirmationReinit=saisie=>String(saisie||'').normalize('NFD').replace(/[̀-ͯ]/g,'').trim().toUpperCase()==='REINITIALISER';
+function reinitConfirmationHtml(){
+  return `<div class="reinit-confirmation">
+    <div class="alert error">${icon('info')}<div><strong>Cette action est définitive.</strong>
+      <p><b>Effacé :</b> ton profil, ton CV et ta lettre, les offres et candidatures avec leur historique, les documents générés, les règles de tri, les zones de recherche, tous les réglages, la liaison Telegram, le mot de passe SMTP, l’image de fond, les brouillons e-mail et les sauvegardes de profils précédents.</p>
+      <p><b>Conservé :</b> Ollama et les modèles IA téléchargés, et les fichiers que tu as exportés ailleurs (CV et lettres en PDF ou DOCX).</p></div></div>
+    <div class="field space-top"><label for="reinit-saisie">Pour confirmer, tape RÉINITIALISER</label><input id="reinit-saisie" autocomplete="off" spellcheck="false" placeholder="RÉINITIALISER" /></div>
+    <div class="inline-actions space-top"><button type="button" class="btn small" data-action="reinit-annuler">Annuler</button><button type="button" class="btn small danger-plein" data-action="reinit-confirmer" disabled>${icon('trash','s')} Tout effacer et redémarrer</button></div>
+  </div>`;
+}
 function applyAppearance(){
   const settings=ui.state?.settings||{};
   document.body.dataset.appearance=settings.appearanceStyle||'solid';
@@ -745,6 +886,25 @@ async function perform(action,success){
   catch(error){tip(error?.message||'Une erreur est survenue','error');return null;}
   finally{ui.busy=false;render();}
 }
+/** Boutons du panneau de téléchargement, qu'il soit dans la page ou dans le guide. */
+async function actionTelechargement(action){
+  if(action==='cancel-model-pull'){
+    if(ui.modelProgress?.active&&!ui.modelProgress.cancelling){ui.modelProgress.cancelling=true;paintModelPull();try{await window.radar.cancelModelPull();}catch(error){tip(error.message,'error');}}
+  }
+  else if(action==='dismiss-model-pull'){
+    if(!ui.modelProgress?.active){ui.modelProgress=null;paintModelPull();}
+  }
+}
+async function importerDocument(kind){
+  const originPage=ui.page;
+  const imported=await perform(()=>window.radar.importDocument(kind),'Document importé en local.');
+  // A new CV is an identity-changing event: always rebuild the visible profile,
+  // even when imported from the Documents page after onboarding.
+  if(imported && kind==='cv' && ui.state.documents.cv?.text){
+    const profile=await perform(()=>window.radar.buildProfileFast(),'CV analysé : vérifie les informations avant de lancer la recherche.');
+    if(profile){if(ui.page===originPage)ui.page='onboarding';render();}
+  }
+}
 appEl.addEventListener('click',event=>{
   const summary=event.target.closest('.geo-search-card > summary');
   if(summary)ui.geoExpanded=!summary.parentElement.open;
@@ -752,15 +912,8 @@ appEl.addEventListener('click',event=>{
 appEl.addEventListener('click',async(event)=>{
   const node=event.target.closest('[data-action],[data-nav]');
   if(!node)return;
-  if(node.dataset.nav){if(ui.page==='monitor'&&node.dataset.nav!=='monitor')ui.geoDraft=null;ui.geoExpanded=node.dataset.nav==='monitor';ui.page=node.dataset.nav;ui.jobId='';ui.dirty=false;render();return;}
-  if(node.dataset.action==='cancel-model-pull'){
-    if(ui.modelProgress?.active&&!ui.modelProgress.cancelling){ui.modelProgress.cancelling=true;paintModelPull();try{await window.radar.cancelModelPull();}catch(error){tip(error.message,'error');}}
-    return;
-  }
-  if(node.dataset.action==='dismiss-model-pull'){
-    if(!ui.modelProgress?.active){ui.modelProgress=null;paintModelPull();}
-    return;
-  }
+  if(node.dataset.nav){ui.reinit=false;if(ui.page==='monitor'&&node.dataset.nav!=='monitor')ui.geoDraft=null;ui.geoExpanded=node.dataset.nav==='monitor';ui.page=node.dataset.nav;ui.jobId='';ui.dirty=false;render();return;}
+  if(node.dataset.action==='cancel-model-pull'||node.dataset.action==='dismiss-model-pull'){await actionTelechargement(node.dataset.action);return;}
   if(node.dataset.action?.startsWith('ia-')){await iaAction(node);return;}
   if(node.dataset.action==='chat-resumer'){ui.jobId=node.dataset.id||ui.jobId;chat.ouvert=true;await chatEnvoyer('Résume cette offre');return;} // l'assistant IA a son propre état « en cours »
   if(ui.busy)return; // Les actions sont verrouillées, mais la navigation reste disponible.
@@ -806,15 +959,17 @@ appEl.addEventListener('click',async(event)=>{
   if(action==='focus-new-job'){document.getElementById('add-job')?.scrollIntoView({behavior:'smooth'});document.querySelector('#add-job-form input')?.focus();return;}
   if(action==='verify-job-date'){const result=await perform(()=>window.radar.verifyJobDate(id));if(result){const msg=result.dateCheckStatus==='verified'?'Date de publication confirmée sur le site officiel.':result.dateCheckStatus==='error'?`Échec de la vérification : ${result.dateCheckError||'site indisponible'}. Consulte l’annonce officielle.`:'Page consultée : aucune date de publication explicite trouvée.';tip(msg,result.dateCheckStatus==='verified'?'success':'error');}return;}
   if(action==='open-job'){const job=ui.state.jobs.find(j=>j.id===id);if(job)await perform(()=>window.radar.openUrl(job.url));return;}
-  if(action==='import-document'){
-    const originPage=ui.page;
-    const imported=await perform(()=>window.radar.importDocument(kind),'Document importé en local.');
-    // A new CV is an identity-changing event: always rebuild the visible profile,
-    // even when imported from the Documents page after onboarding.
-    if(imported && kind==='cv' && ui.state.documents.cv?.text){
-      const profile=await perform(()=>window.radar.buildProfileFast(),'CV analysé : vérifie les informations avant de lancer la recherche.');
-      if(profile){if(ui.page===originPage)ui.page='onboarding';render();}
-    }
+  if(action==='import-document'){await importerDocument(kind);return;}
+  if(action==='ouvrir-guide'){bienvenueOuvrir(0);return;}
+  if(action==='reinit-demander'){ui.reinit=true;render();document.getElementById('reinit-saisie')?.focus();return;}
+  if(action==='reinit-annuler'){ui.reinit=false;render();return;}
+  if(action==='reinit-confirmer'){
+    const saisie=document.getElementById('reinit-saisie')?.value;
+    if(!confirmationReinit(saisie))return;
+    ui.busy=true;render();tip('Réinitialisation en cours…');
+    // En cas de succès, le processus principal recharge la fenêtre : tout repart de zéro.
+    try{await window.radar.resetAll(saisie);}
+    catch(error){ui.busy=false;ui.reinit=true;render();tip(error?.message||'Réinitialisation impossible.','error');}
     return;
   }
   if(action==='document-kind'){ui.docKind=kind;render();return;}
@@ -997,13 +1152,10 @@ async function initialize(){
     const [state,system,models,modelCatalog,wallpaperData,pullStatus] = await Promise.all([window.radar.state(),window.radar.system(),window.radar.models(),window.radar.qwenCatalog?.()||Promise.resolve([]),window.radar.wallpaperGet?.()||Promise.resolve(''),window.radar.modelPullStatus?.()||Promise.resolve(null)]);
     ui.modelCatalog=modelCatalog;ui.wallpaperData=wallpaperData||'';ui.modelProgress=pullStatus||ui.modelProgress;
     ui.state=state;ui.system=system;ui.models=models;
-    if(!state.settings.selectedModel&&models.models.length) {
-      const suggested=models.models.find(m=>m.name===system.recommended);
-      const selected=(suggested||models.models[0]).name;
-      ui.state=await window.radar.saveSettings({selectedModel:selected});
-    }
+    await modeleParDefaut();
     ui.page=state.settings.onboardingCompleted?'dashboard':'onboarding';
     render();
+    if(!ui.state.settings.welcomeSeen)bienvenueOuvrir(0);
     if(ui.state.settings.jobsSort==='distance')refreshDistances();
   } catch(error) {
     appEl.innerHTML=`<div class="loading-screen"><div class="brand-mark large">${icon('radar')}</div><h2>Impossible d’ouvrir AlterRADAR</h2><p>${esc(error.message)}</p></div>`;
@@ -1023,6 +1175,7 @@ if(window.radar?.onPublicationDate)window.radar.onPublicationDate(update=>{
 // the DOM only if the server-side state actually changed. The “Actualiser le suivi”
 // button remains available while the window stays focused.
 window.addEventListener('focus',()=>{
+  if(bienvenue.ouvert&&bienvenue.etape>0&&bienvenue.etape<3)window.radar.models().then(async modeles=>{ui.models=modeles;await modeleParDefaut();bienvenuePeindre();}).catch(()=>{});
   if(ui.state&&!ui.busy&&!ui.dirty&&!document.querySelector('input:focus, textarea:focus, select:focus'))
     loadState({skipUnchanged:true}).catch(()=>{});
 });
@@ -1037,6 +1190,11 @@ appEl.addEventListener('pointermove',event=>{
   button.style.setProperty('--bubble-y',`${Math.round(event.clientY-bounds.top)}px`);
 },{passive:true});
 
+appEl.addEventListener('input',event=>{
+  if(event.target?.id!=='reinit-saisie')return;
+  const bouton=appEl.querySelector('[data-action="reinit-confirmer"]');
+  if(bouton)bouton.disabled=!confirmationReinit(event.target.value);
+});
 // Assistant IA : Entrée envoie la question (les champs ne sont pas dans un <form>).
 appEl.addEventListener('keydown',event=>{
   if(event.key!=='Enter'||event.isComposing)return;

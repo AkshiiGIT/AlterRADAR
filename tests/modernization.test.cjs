@@ -39,7 +39,7 @@ test('les imports restent compatibles avec le modèle de données v0.10',()=>{
 });
 
 test('la base est modernisée et n’utilise pas de versions preview',()=>{
- assert.equal(pkg.version,'0.15.0');
+ assert.equal(pkg.version,'0.16.0');
  assert.equal(pkg.devDependencies.electron,'44.9.3');
  assert.equal(pkg.devDependencies['electron-builder'],'26.15.3');
  assert.equal(pkg.dependencies['pdf-parse'],'2.4.5');

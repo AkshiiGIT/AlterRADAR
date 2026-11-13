@@ -18,12 +18,15 @@ function creerFauxOllama({ sansEmbed = false, latenceMs = 5, routeurCasse = fals
   const VIDES = new Set('quelle quel quels quelles est les des une pour comment dans sur avec que qui sont mon mes ton tes son ses aux par pas plus cette ces faire peut tout'.split(' '));
   const mots = t => String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/[^a-z0-9]+/).filter(m => m.length > 2 && !VIDES.has(m));
   // Embedding « sac de mots » haché : deux textes partageant des mots ont un cosinus positif.
+  // 4096 cases : avec 512, « réinitialisation » et « Pérou » tombaient dans la même case et
+  // une question hors sujet trouvait une source par pure collision de hachage.
+  const DIMENSIONS = 4096;
   function vecteur(texte) {
-    const v = new Array(512).fill(0);
+    const v = new Array(DIMENSIONS).fill(0);
     for (const m of mots(texte)) {
       let h = 0;
       for (const c of m.slice(0, 6)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-      v[h % 512] += 1;
+      v[h % DIMENSIONS] += 1;
     }
     return v;
   }

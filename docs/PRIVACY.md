@@ -17,7 +17,7 @@ Il n’existe ni compte AlterRADAR, ni serveur central, ni télémétrie. Le cr�
 
 Ces fichiers **ne sont pas chiffrés au repos**. Les secrets (jeton Telegram, mot de passe SMTP, clés API France Travail, Adzuna, Jooble et La bonne alternance) sont chiffrés séparément avec le coffre du système via Electron `safeStorage` (DPAPI sous Windows, trousseau sous macOS). Une sauvegarde non protégée ou un compte utilisateur compromis peut exposer le reste des données : protège ta session.
 
-Pour tout effacer : quitte AlterRADAR (**Quitter complètement** si la surveillance est active) puis supprime le dossier ci-dessus.
+Pour tout effacer : **Paramètres → Réinitialiser AlterRADAR**. Ollama et ses modèles ne sont pas touchés. Sinon, quitte AlterRADAR (**Quitter complètement** si la surveillance est active) puis supprime le dossier ci-dessus.
 
 ## Ce qui sort de ton ordinateur
 
